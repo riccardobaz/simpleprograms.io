@@ -9,10 +9,13 @@ function resizeCanvas() {
     canvas.height = window.innerHeight;
 }
 resizeCanvas();
-window.addEventListener("resize", resizeCanvas);
+window.addEventListener("resize", () => {
+    // For simplicity: reload to recompute everything for new size
+    location.reload();
+});
 
 // ========================
-// Rule 110 (binary, r=1)
+// Rule 110 (binary, r = 1)
 // ========================
 const rule110 = {
     "111": 0,
@@ -26,38 +29,56 @@ const rule110 = {
 };
 
 // ========================
-// Parameters
+// Parameters (analogous to your WL config)
 // ========================
-const cellSize = 3;   // pixel size
-const columns = () => Math.floor(canvas.width  / cellSize);
-const rows    = () => Math.floor(canvas.height / cellSize);
-
-const STEP_DELAY = 80;
-
-// initial CA row
-let currentRow = new Array(columns()).fill(0).map(() =>
-    Math.random() < 0.5 ? 1 : 0
-);
-
-// rolling buffer of rows
-let rowBuffer = [];
+const cellSize = 3;                             // pixel size
+const L       = Math.floor(canvas.width / cellSize);  // width in cells
+const radius  = 1;                              // Rule 110 is r=1
+const k       = 2;                              // binary
+const steps   = 4 * L;                          // like steps = 4 L
+const seedMode = "random";                      // "random" | "singleCenter"
+const STEP_DELAY = 20;                          // ms per row reveal
 
 // ========================
-// CA evolution
+// Seed helpers
 // ========================
-function computeNextRow(row) {
-    const next = new Array(row.length).fill(0);
-    for (let i = 0; i < row.length; i++) {
-        const left  = row[(i - 1 + row.length) % row.length];
-        const mid   = row[i];
-        const right = row[(i + 1) % row.length];
-        next[i] = rule110[`${left}${mid}${right}`];
+function makeSeed(mode) {
+    if (mode === "singleCenter") {
+        const arr = new Array(L).fill(0);
+        arr[Math.floor(L / 2)] = 1;
+        return arr;
     }
-    return next;
+    // default: random
+    const arr = new Array(L);
+    for (let i = 0; i < L; i++) {
+        arr[i] = Math.random() < 0.5 ? 1 : 0;
+    }
+    return arr;
 }
 
 // ========================
-// Connected Components (4-connected BFS)
+// Evolve CA once to get full space-time diagram
+// ========================
+function evolveRule110(seed, steps) {
+    const history = [];
+    let row = seed.slice();
+    for (let t = 0; t < steps; t++) {
+        history.push(row.slice());
+        const next = new Array(row.length);
+        for (let i = 0; i < row.length; i++) {
+            const left  = row[(i - 1 + row.length) % row.length];
+            const mid   = row[i];
+            const right = row[(i + 1) % row.length];
+            next[i] = rule110[`${left}${mid}${right}`];
+        }
+        row = next;
+    }
+    return history;
+}
+
+// ========================
+// Connected Components on full array
+// (4-connected, like CornerNeighbors -> False)
 // ========================
 function computeComponents(buffer) {
     const h = buffer.length;
@@ -67,7 +88,7 @@ function computeComponents(buffer) {
     let currentLabel = 1;
 
     const dirs = [
-        [1,0], [-1,0], [0,1], [0,-1] // CornerNeighbors->False in Mathematica
+        [1,0], [-1,0], [0,1], [0,-1]
     ];
 
     function bfs(sr, sc) {
@@ -94,7 +115,6 @@ function computeComponents(buffer) {
 
     const componentSizes = {};
 
-    // find components
     for (let r = 0; r < h; r++) {
         for (let c = 0; c < w; c++) {
             if (buffer[r][c] === 1 && labels[r][c] === 0) {
@@ -109,81 +129,91 @@ function computeComponents(buffer) {
 }
 
 // ========================
-// Palette (Hue gradient)
+// Palette (similar to Hue[] ramp)
 // ========================
 function makePalette(n) {
     const colors = [];
-    for (let i = 0; i < n; i++) {
-        const hue = (i / n) * 360;
+    // avoid n=0 case
+    const denom = n || 1;
+    for (let i = 0; i < denom; i++) {
+        const hue = (i / denom) * 360;
         colors.push(`hsl(${hue}, 100%, 60%)`);
     }
     return colors;
 }
 
 // ========================
-// Component colorization
+// Colorization (once, on full diagram)
 // ========================
-function colorize(buffer) {
+function colorizeStatic(buffer) {
     const { labels, componentSizes } = computeComponents(buffer);
 
     const componentList = Object.keys(componentSizes).map(k => parseInt(k));
-
     if (componentList.length === 0) {
+        // just black background
         return { labels, colorMap: { 0: "black" } };
     }
 
-    // largest component → background
+    // find largest component -> background
     let biggest = componentList[0];
     for (const k of componentList) {
         if (componentSizes[k] > componentSizes[biggest]) biggest = k;
     }
 
-    // remaining components get unique colors
     const remaining = componentList.filter(k => k !== biggest);
     const palette = makePalette(remaining.length);
 
-    const colorMap = {};
+    const colorMap = { 0: "black" };
     remaining.forEach((lab, i) => {
         colorMap[lab] = palette[i];
     });
-
-    // background
+    // largest goes to background color
     colorMap[biggest] = "black";
 
     return { labels, colorMap };
 }
 
 // ========================
-// Main loop
+// Precompute once
 // ========================
-function step() {
-    const maxRows = rows();
+const seed    = makeSeed(seedMode);
+const history = evolveRule110(seed, steps);           // full run
+const { labels: labelGrid, colorMap } = colorizeStatic(history);
 
-    // add newest CA row
-    rowBuffer.push(currentRow.slice());
-    if (rowBuffer.length > maxRows) rowBuffer.shift();
+// ========================
+// Animation: reveal rows one by one
+// ========================
+let currentRowIndex = 0;
 
-    // clear canvas
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+function drawUpToRow(maxRow) {
+    // clear and redraw everything up to maxRow (inclusive)
+    ctx.fillStyle = "black";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    // colorize all buffered rows
-    const { labels, colorMap } = colorize(rowBuffer);
+    const h = labelGrid.length;
+    const w = labelGrid[0].length;
 
-    // draw according to component labels
-    for (let r = 0; r < labels.length; r++) {
-        for (let c = 0; c < labels[r].length; c++) {
-            const label = labels[r][c];
-            ctx.fillStyle = colorMap[label] || "black";
-            ctx.fillRect(c * cellSize, r * cellSize, cellSize, cellSize);
+    const lastRow = Math.min(maxRow, h - 1);
+
+    for (let r = 0; r <= lastRow; r++) {
+        for (let c = 0; c < w; c++) {
+            const label = labelGrid[r][c];
+            const color = colorMap[label] || "black";
+            if (color !== "black") {
+                ctx.fillStyle = color;
+                ctx.fillRect(c * cellSize, r * cellSize, cellSize, cellSize);
+            }
         }
     }
-
-    // evolve state
-    currentRow = computeNextRow(currentRow);
-
-    // schedule next
-    setTimeout(step, STEP_DELAY);
 }
 
-// start evolution
-step();
+function animateReveal() {
+    drawUpToRow(currentRowIndex);
+    currentRowIndex++;
+    if (currentRowIndex < labelGrid.length) {
+        setTimeout(animateReveal, STEP_DELAY);
+    }
+}
+
+// start the reveal
+animateReveal();
