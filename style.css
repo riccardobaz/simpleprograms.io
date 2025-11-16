@@ -34,7 +34,7 @@ html, body {
 /* MOBILE TUNING */
 @media (max-width: 600px) {
     #logo-container {
-        font-size: clamp(1.1rem, 7vw, 1.8rem);  /* smaller on phones */
+        font-size: 1rem;
         letter-spacing: 1px;
         line-height: 1.2;
     }
