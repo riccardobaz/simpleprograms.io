@@ -29,3 +29,16 @@ html, body {
     pointer-events: none;
     padding: 1rem;           /* ensures text doesn't overflow on very small screens */
 }
+
+/* MOBILE FIX */
+@media (max-width: 600px) {
+    #logo-container {
+        font-size: 1.4rem;       /* smaller text */
+        line-height: 1.2;
+        padding: 0 0.5rem;       /* tighter padding */
+        word-break: break-word;  /* allow wrapping if needed */
+        white-space: normal;     /* allow multiple lines */
+        text-align: center;
+    }
+}
+
