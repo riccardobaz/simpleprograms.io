@@ -1,6 +1,8 @@
 // ========================
-// Canvas setup
+// Aurora CA visualizer (radius-2, k=2)
 // ========================
+
+// ---- CANVAS SETUP ----
 const canvas = document.getElementById("caCanvas");
 const ctx = canvas.getContext("2d");
 
@@ -9,77 +11,89 @@ function resizeCanvas() {
     canvas.height = window.innerHeight;
 }
 resizeCanvas();
-window.addEventListener("resize", () => {
-    // For simplicity: reload to recompute everything for new size
-    location.reload();
-});
+window.addEventListener("resize", () => location.reload());
 
-// ========================
-// Rule 110 (binary, r = 1)
-// ========================
-const rule110 = {
-    "111": 0,
-    "110": 1,
-    "101": 1,
-    "100": 0,
-    "011": 1,
-    "010": 1,
-    "001": 1,
-    "000": 0
-};
+// ---- PARAMETERS ----
+const cellSize = 3;
+const L = Math.floor(canvas.width / cellSize);
+const steps = 4 * L;
+const STEP_DELAY = 15;
 
-// ========================
-// Parameters (analogous to your WL config)
-// ========================
-const cellSize = 3;                             // pixel size
-const L       = Math.floor(canvas.width / cellSize);  // width in cells
-const radius  = 1;                              // Rule 110 is r=1
-const k       = 2;                              // binary
-const steps   = 4 * L;                          // like steps = 4 L
-const seedMode = "random";                      // "random" | "singleCenter"
-const STEP_DELAY = 20;                          // ms per row reveal
+// ---- CLASS II RULE LIST (from your file) ----
+const classIIrules = [
+  7,11,13,15,19,23,27,29,35,39,
+  47,55,59,71,79,104,112,152,
+  216,228,230,232,233,240
+];
 
-// ========================
-// Seed helpers
-// ========================
-function makeSeed(mode) {
-    if (mode === "singleCenter") {
-        const arr = new Array(L).fill(0);
-        arr[Math.floor(L / 2)] = 1;
-        return arr;
+// ---- CHOOSE RANDOM RULE ----
+const ruleN = classIIrules[Math.floor(Math.random() * classIIrules.length)];
+console.log("Using rule:", ruleN);
+
+// ===============================
+// BUILD RULE TABLE FOR (n, r=2, k=2)
+// ===============================
+const radius = 2;
+const k = 2;
+const neighborhoodSize = 2 * radius + 1;
+const ruleTable = {};
+
+(function buildRule() {
+    // There are 2^(2r+1) possible neighborhoods
+    const numNeighborhoods = Math.pow(k, neighborhoodSize); // 2^5 = 32
+    let n = ruleN;
+
+    for (let i = 0; i < numNeighborhoods; i++) {
+        const output = n & 1;
+        n >>= 1;
+
+        // neighborhood encoded as e.g. "01001"
+        const bits = i.toString(2).padStart(neighborhoodSize, "0");
+        ruleTable[bits] = output;
     }
-    // default: random
-    const arr = new Array(L);
-    for (let i = 0; i < L; i++) {
+})();
+
+// ===============================
+// SEED INITIAL ROW
+// ===============================
+function makeSeed(length) {
+    const arr = new Array(length);
+    for (let i = 0; i < length; i++) {
         arr[i] = Math.random() < 0.5 ? 1 : 0;
     }
     return arr;
 }
+const seed = makeSeed(L);
 
-// ========================
-// Evolve CA once to get full space-time diagram
-// ========================
-function evolveRule110(seed, steps) {
-    const history = [];
+// ===============================
+// EVOLVE THE CA FOR ALL STEPS
+// ===============================
+function evolveCA(seed, steps) {
+    const hist = [];
     let row = seed.slice();
+
     for (let t = 0; t < steps; t++) {
-        history.push(row.slice());
+        hist.push(row.slice());
+
         const next = new Array(row.length);
         for (let i = 0; i < row.length; i++) {
-            const left  = row[(i - 1 + row.length) % row.length];
-            const mid   = row[i];
-            const right = row[(i + 1) % row.length];
-            next[i] = rule110[`${left}${mid}${right}`];
+            let neigh = "";
+            for (let d = -radius; d <= radius; d++) {
+                neigh += row[(i + d + row.length) % row.length];
+            }
+            next[i] = ruleTable[neigh];
         }
+
         row = next;
     }
-    return history;
+    return hist;
 }
 
-// ========================
-// Connected Components on full array
-// (4-connected, like CornerNeighbors -> False)
-// ========================
+const history = evolveCA(seed, steps);
+
+// ===============================
+// CONNECTED COMPONENTS (4-neighbor)
+// ===============================
 function computeComponents(buffer) {
     const h = buffer.length;
     const w = buffer[0].length;
@@ -110,110 +124,115 @@ function computeComponents(buffer) {
                 }
             }
         }
+
         return count;
     }
 
-    const componentSizes = {};
+    const sizes = {};
 
     for (let r = 0; r < h; r++) {
         for (let c = 0; c < w; c++) {
             if (buffer[r][c] === 1 && labels[r][c] === 0) {
-                const size = bfs(r, c);
-                componentSizes[currentLabel] = size;
+                const s = bfs(r, c);
+                sizes[currentLabel] = s;
                 currentLabel++;
             }
         }
     }
 
-    return { labels, componentSizes };
+    return { labels, sizes };
 }
 
-// ========================
-// Palette (similar to Hue[] ramp)
-// ========================
-function makePalette(n) {
-    const colors = [];
-    // avoid n=0 case
-    const denom = n || 1;
-    for (let i = 0; i < denom; i++) {
-        const hue = (i / denom) * 360;
-        colors.push(`hsl(${hue}, 100%, 60%)`);
+// ===============================
+// AURORA PALETTE (approximation)
+// ===============================
+const auroraPaletteBase = [
+    "#2E1A47",
+    "#22436F",
+    "#0E7C86",
+    "#6BCF63",
+    "#F6C445",
+    "#E06D2F",
+    "#C02639"
+];
+
+function auroraPalette(n) {
+    const result = [];
+    for (let i = 0; i < n; i++) {
+        const t = i / (n - 1 || 1);
+        const idx = t * (auroraPaletteBase.length - 1);
+        const i0 = Math.floor(idx);
+        const i1 = Math.min(i0 + 1, auroraPaletteBase.length - 1);
+        const f  = idx - i0;
+
+        const c0 = hexToRGB(auroraPaletteBase[i0]);
+        const c1 = hexToRGB(auroraPaletteBase[i1]);
+
+        const r = Math.round(c0.r + f*(c1.r - c0.r));
+        const g = Math.round(c0.g + f*(c1.g - c0.g));
+        const b = Math.round(c0.b + f*(c1.b - c0.b));
+
+        result.push(`rgb(${r},${g},${b})`);
     }
-    return colors;
+    return result;
 }
 
-// ========================
-// Colorization (once, on full diagram)
-// ========================
-function colorizeStatic(buffer) {
-    const { labels, componentSizes } = computeComponents(buffer);
-
-    const componentList = Object.keys(componentSizes).map(k => parseInt(k));
-    if (componentList.length === 0) {
-        // just black background
-        return { labels, colorMap: { 0: "black" } };
-    }
-
-    // find largest component -> background
-    let biggest = componentList[0];
-    for (const k of componentList) {
-        if (componentSizes[k] > componentSizes[biggest]) biggest = k;
-    }
-
-    const remaining = componentList.filter(k => k !== biggest);
-    const palette = makePalette(remaining.length);
-
-    const colorMap = { 0: "black" };
-    remaining.forEach((lab, i) => {
-        colorMap[lab] = palette[i];
-    });
-    // largest goes to background color
-    colorMap[biggest] = "black";
-
-    return { labels, colorMap };
+function hexToRGB(hex) {
+    const v = parseInt(hex.slice(1), 16);
+    return { 
+        r: (v >> 16) & 255,
+        g: (v >> 8) & 255,
+        b: v & 255
+    };
 }
 
-// ========================
-// Precompute once
-// ========================
-const seed    = makeSeed(seedMode);
-const history = evolveRule110(seed, steps);           // full run
-const { labels: labelGrid, colorMap } = colorizeStatic(history);
+// ===============================
+// STATIC COLORIZATION
+// ===============================
+const { labels, sizes } = computeComponents(history);
 
-// ========================
-// Animation: reveal rows one by one
-// ========================
-let currentRowIndex = 0;
+const comps = Object.keys(sizes).map(k => parseInt(k));
+let biggest = comps[0];
+for (const k of comps) {
+    if (sizes[k] > sizes[biggest]) biggest = k;
+}
 
-function drawUpToRow(maxRow) {
-    // clear and redraw everything up to maxRow (inclusive)
+const remaining = comps.filter(k => k !== biggest);
+const palette = auroraPalette(remaining.length);
+
+const colorMap = { 0: "black" };
+remaining.forEach((lab, idx) => {
+    colorMap[lab] = palette[idx];
+});
+colorMap[biggest] = "black"; // largest → background
+
+// ===============================
+// ANIMATION: reveal line-by-line
+// ===============================
+let currentRow = 0;
+
+function drawUpTo(row) {
     ctx.fillStyle = "black";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    const h = labelGrid.length;
-    const w = labelGrid[0].length;
-
-    const lastRow = Math.min(maxRow, h - 1);
-
-    for (let r = 0; r <= lastRow; r++) {
-        for (let c = 0; c < w; c++) {
-            const label = labelGrid[r][c];
-            const color = colorMap[label] || "black";
-            if (color !== "black") {
-                ctx.fillStyle = color;
+    for (let r = 0; r <= row && r < labels.length; r++) {
+        for (let c = 0; c < labels[r].length; c++) {
+            const lab = labels[r][c];
+            const col = colorMap[lab];
+            if (col !== "black") {
+                ctx.fillStyle = col;
                 ctx.fillRect(c * cellSize, r * cellSize, cellSize, cellSize);
             }
         }
     }
 }
 
-function animateReveal() {
-    drawUpToRow(currentRowIndex);
-    currentRowIndex++;
-    if (currentRowIndex < labelGrid.length) {
-        setTimeout(animateReveal, STEP_DELAY);
+function animate() {
+    drawUpTo(currentRow);
+    currentRow++;
+    if (currentRow < labels.length) {
+        setTimeout(animate, STEP_DELAY);
     }
 }
 
-// start the reveal
-animateReveal();
+animate();
