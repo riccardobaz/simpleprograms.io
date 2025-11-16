@@ -17,28 +17,26 @@ html, body {
 
 #logo-container {
     position: fixed;
-    inset: 0;                /* takes full screen */
+    inset: 0;                 /* full screen */
     display: flex;
     justify-content: center;
-    align-items: center;     /* REAL vertical centering */
+    align-items: center;
     z-index: 10;
     color: white;
     text-align: center;
-    font-size: 2.5rem;
+    font-family: Arial, sans-serif;
+    font-size: clamp(1.2rem, 6vw, 2.5rem);  /* responsive size */
     letter-spacing: 2px;
     pointer-events: none;
-    padding: 1rem;           /* ensures text doesn't overflow on very small screens */
+    padding: 1rem;
 }
 
-/* MOBILE FIX */
+/* MOBILE TUNING */
 @media (max-width: 600px) {
     #logo-container {
-        font-size: 1.4rem;       /* smaller text */
+        font-size: clamp(1.1rem, 7vw, 1.8rem);  /* smaller on phones */
+        letter-spacing: 1px;
         line-height: 1.2;
-        padding: 0 0.5rem;       /* tighter padding */
-        word-break: break-word;  /* allow wrapping if needed */
-        white-space: normal;     /* allow multiple lines */
-        text-align: center;
     }
 }
 
