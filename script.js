@@ -1,4 +1,5 @@
-const canvas = document.getElementById("ca-canvas");
+// ==== Canvas setup ====
+const canvas = document.getElementById("caCanvas");
 const ctx = canvas.getContext("2d");
 
 function resizeCanvas() {
@@ -8,8 +9,8 @@ function resizeCanvas() {
 resizeCanvas();
 window.addEventListener("resize", resizeCanvas);
 
-// Rule 110 lookup table
-// Mapping from (left, self, right) binary to next state
+// ==== Rule 110 table ====
+// Mapping neighborhood (as string) → new cell state
 const rule110 = {
     "111": 0,
     "110": 1,
@@ -21,60 +22,64 @@ const rule110 = {
     "000": 0
 };
 
-// Size of each cell (visual resolution)
-const cellSize = 3;
+// ==== Simulation parameters ====
+const cellSize = 3;                     // pixel size of each cell
+const columns = () => Math.floor(canvas.width / cellSize);
+const rows = () => Math.floor(canvas.height / cellSize);
 
-// Number of cells per row
-let cols = Math.floor(canvas.width / cellSize);
+// Slow evolution speed (milliseconds per new row)
+const STEP_DELAY = 80;                  // try 50–150 ms to tune speed
 
-// Current and next generation arrays
-let current = new Array(cols).fill(0);
-let next = new Array(cols).fill(0);
+// Current CA state (the “current row”)
+let currentRow = new Array(columns()).fill(0).map(() => Math.random() < 0.5 ? 1 : 0);
 
-// Fill with random seed
-for (let i = 0; i < cols; i++) {
-    current[i] = Math.random() < 0.5 ? 1 : 0;
+// A buffer of rows we have drawn (screen scroll effect)
+let rowBuffer = [];
+
+function computeNextRow(row) {
+    const next = new Array(row.length).fill(0);
+    for (let i = 0; i < row.length; i++) {
+        const left = row[(i - 1 + row.length) % row.length];
+        const mid = row[i];
+        const right = row[(i + 1) % row.length];
+        const neighborhood = `${left}${mid}${right}`;
+        next[i] = rule110[neighborhood];
+    }
+    return next;
 }
 
-let y = 0;
+function drawRow(row, y) {
+    for (let x = 0; x < row.length; x++) {
+        ctx.fillStyle = row[x] === 1 ? "#ffffff" : "#000000";
+        ctx.fillRect(x * cellSize, y * cellSize, cellSize, cellSize);
+    }
+}
 
-// Draw loop
 function step() {
-    // Draw current generation
-    for (let x = 0; x < cols; x++) {
-        if (current[x] === 1) {
-            ctx.fillStyle = "white";
-        } else {
-            ctx.fillStyle = "black";
-        }
-        ctx.fillRect(x * cellSize, y, cellSize, cellSize);
+    const maxRows = rows();
+
+    // Add the new row to buffer
+    rowBuffer.push(currentRow.slice());
+
+    // If too many rows, remove oldest (scroll effect)
+    if (rowBuffer.length > maxRows) {
+        rowBuffer.shift();
+    }
+
+    // Clear the whole canvas
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // Redraw all buffered rows from top to bottom
+    for (let i = 0; i < rowBuffer.length; i++) {
+        drawRow(rowBuffer[i], i);
     }
 
     // Compute next row
-    for (let i = 0; i < cols; i++) {
-        const left = current[(i - 1 + cols) % cols];
-        const self = current[i];
-        const right = current[(i + 1) % cols];
-        const key = `${left}${self}${right}`;
-        next[i] = rule110[key];
-    }
+    currentRow = computeNextRow(currentRow);
 
-    // Move to next row
-    y += cellSize;
-
-    // If we reach bottom → restart with a new random seed
-    if (y >= canvas.height) {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        y = 0;
-        for (let i = 0; i < cols; i++) {
-            current[i] = Math.random() < 0.5 ? 1 : 0;
-        }
-    } else {
-        // Copy next → current
-        [current, next] = [next.slice(), current];
-    }
-
-    requestAnimationFrame(step);
+    // Schedule next step
+    setTimeout(step, STEP_DELAY);
 }
 
+// Start the loop
 step();
