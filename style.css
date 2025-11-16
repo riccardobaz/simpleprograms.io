@@ -16,14 +16,16 @@ html, body {
 }
 
 #logo-container {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
+    position: fixed;
+    inset: 0;                /* takes full screen */
+    display: flex;
+    justify-content: center;
+    align-items: center;     /* REAL vertical centering */
     z-index: 10;
     color: white;
     text-align: center;
     font-size: 2.5rem;
     letter-spacing: 2px;
     pointer-events: none;
+    padding: 1rem;           /* ensures text doesn't overflow on very small screens */
 }
