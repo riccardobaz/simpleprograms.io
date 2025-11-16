@@ -1,4 +1,6 @@
-// ==== Canvas setup ====
+// ========================
+// Canvas setup
+// ========================
 const canvas = document.getElementById("caCanvas");
 const ctx = canvas.getContext("2d");
 
@@ -9,7 +11,9 @@ function resizeCanvas() {
 resizeCanvas();
 window.addEventListener("resize", resizeCanvas);
 
-// ==== Rule 110 table ====
+// ========================
+// Rule 110 (binary, r=1)
+// ========================
 const rule110 = {
     "111": 0,
     "110": 1,
@@ -21,159 +25,165 @@ const rule110 = {
     "000": 0
 };
 
-// ==== Color Palettes ====
-const palettes = {
-    "AuroraColors": [
-        "#00ff87", "#00d4ff", "#0087ff", "#5f00ff", "#af00ff", 
-        "#ff00af", "#ff0087", "#ff5f00", "#ffaf00", "#ffd700"
-    ],
-    "BrightBands": [
-        "#ff006e", "#fb5607", "#ffbe0b", "#8338ec", "#3a86ff",
-        "#06ffa5", "#ff006e", "#fb5607", "#ffbe0b", "#8338ec"
-    ],
-    "Neon": [
-        "#ff00ff", "#00ffff", "#ffff00", "#ff0080", "#00ff80",
-        "#8000ff", "#ff8000", "#0080ff", "#80ff00", "#ff0040"
-    ]
-};
+// ========================
+// Parameters
+// ========================
+const cellSize = 3;   // pixel size
+const columns = () => Math.floor(canvas.width  / cellSize);
+const rows    = () => Math.floor(canvas.height / cellSize);
 
-// ==== Simulation parameters ====
-const cellSize = 3;
-const columns = () => Math.floor(canvas.width / cellSize);
-const rows = () => Math.floor(canvas.height / cellSize);
 const STEP_DELAY = 80;
 
-// Choose your palette here
-const PALETTE = palettes.AuroraColors;
-const BG_COLOR = "#000000";
+// initial CA row
+let currentRow = new Array(columns()).fill(0).map(() =>
+    Math.random() < 0.5 ? 1 : 0
+);
 
-let currentRow = new Array(columns()).fill(0).map(() => Math.random() < 0.5 ? 1 : 0);
+// rolling buffer of rows
 let rowBuffer = [];
 
+// ========================
+// CA evolution
+// ========================
 function computeNextRow(row) {
     const next = new Array(row.length).fill(0);
     for (let i = 0; i < row.length; i++) {
-        const left = row[(i - 1 + row.length) % row.length];
-        const mid = row[i];
+        const left  = row[(i - 1 + row.length) % row.length];
+        const mid   = row[i];
         const right = row[(i + 1) % row.length];
-        const neighborhood = `${left}${mid}${right}`;
-        next[i] = rule110[neighborhood];
+        next[i] = rule110[`${left}${mid}${right}`];
     }
     return next;
 }
 
-// ==== Connected Component Labeling ====
-function findConnectedComponents(grid) {
-    const height = grid.length;
-    const width = grid[0].length;
-    const labels = Array.from({ length: height }, () => new Array(width).fill(0));
-    let currentLabel = 1;
-    const componentSizes = {};
+// ========================
+// Connected Components (4-connected BFS)
+// ========================
+function computeComponents(buffer) {
+    const h = buffer.length;
+    const w = buffer[0].length;
 
-    function floodFill(y, x, label) {
-        const stack = [[y, x]];
-        let size = 0;
-        
-        while (stack.length > 0) {
-            const [cy, cx] = stack.pop();
-            
-            if (cy < 0 || cy >= height || cx < 0 || cx >= width) continue;
-            if (labels[cy][cx] !== 0 || grid[cy][cx] === 0) continue;
-            
-            labels[cy][cx] = label;
-            size++;
-            
-            // 4-connected neighbors (not diagonal)
-            stack.push([cy - 1, cx]);
-            stack.push([cy + 1, cx]);
-            stack.push([cy, cx - 1]);
-            stack.push([cy, cx + 1]);
+    const labels = Array.from({ length: h }, () => new Array(w).fill(0));
+    let currentLabel = 1;
+
+    const dirs = [
+        [1,0], [-1,0], [0,1], [0,-1] // CornerNeighbors->False in Mathematica
+    ];
+
+    function bfs(sr, sc) {
+        const queue = [[sr, sc]];
+        labels[sr][sc] = currentLabel;
+        let count = 1;
+
+        while (queue.length > 0) {
+            const [r, c] = queue.shift();
+            for (const [dr, dc] of dirs) {
+                const nr = r + dr;
+                const nc = c + dc;
+                if (nr >= 0 && nr < h && nc >= 0 && nc < w) {
+                    if (buffer[nr][nc] === 1 && labels[nr][nc] === 0) {
+                        labels[nr][nc] = currentLabel;
+                        queue.push([nr, nc]);
+                        count++;
+                    }
+                }
+            }
         }
-        
-        return size;
+        return count;
     }
 
-    // Label all components
-    for (let y = 0; y < height; y++) {
-        for (let x = 0; x < width; x++) {
-            if (grid[y][x] === 1 && labels[y][x] === 0) {
-                const size = floodFill(y, x, currentLabel);
+    const componentSizes = {};
+
+    // find components
+    for (let r = 0; r < h; r++) {
+        for (let c = 0; c < w; c++) {
+            if (buffer[r][c] === 1 && labels[r][c] === 0) {
+                const size = bfs(r, c);
                 componentSizes[currentLabel] = size;
                 currentLabel++;
             }
         }
     }
 
-    return { labels, componentSizes, numComponents: currentLabel - 1 };
+    return { labels, componentSizes };
 }
 
-function getColorForLabel(label, numComponents) {
-    if (label === 0) return BG_COLOR;
-    
-    // Use palette colors, cycling if needed
-    const colorIndex = (label - 1) % PALETTE.length;
-    return PALETTE[colorIndex];
+// ========================
+// Palette (Hue gradient)
+// ========================
+function makePalette(n) {
+    const colors = [];
+    for (let i = 0; i < n; i++) {
+        const hue = (i / n) * 360;
+        colors.push(`hsl(${hue}, 100%, 60%)`);
+    }
+    return colors;
 }
 
-function drawColorized() {
-    if (rowBuffer.length === 0) return;
+// ========================
+// Component colorization
+// ========================
+function colorize(buffer) {
+    const { labels, componentSizes } = computeComponents(buffer);
 
-    const { labels, componentSizes, numComponents } = findConnectedComponents(rowBuffer);
-    
-    // Find largest component (to make it background)
-    let largestLabel = 0;
-    let largestSize = 0;
-    
-    for (const [label, size] of Object.entries(componentSizes)) {
-        if (size > largestSize) {
-            largestSize = size;
-            largestLabel = parseInt(label);
-        }
+    const componentList = Object.keys(componentSizes).map(k => parseInt(k));
+
+    if (componentList.length === 0) {
+        return { labels, colorMap: { 0: "black" } };
     }
 
-    // Draw the colorized CA
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    
-    for (let y = 0; y < labels.length; y++) {
-        for (let x = 0; x < labels[y].length; x++) {
-            let label = labels[y][x];
-            
-            // Make largest component the background color
-            if (label === largestLabel) {
-                ctx.fillStyle = BG_COLOR;
-            } else if (label === 0) {
-                ctx.fillStyle = BG_COLOR;
-            } else {
-                // Reassign labels to avoid largest
-                const adjustedLabel = label > largestLabel ? label - 1 : label;
-                ctx.fillStyle = getColorForLabel(adjustedLabel, numComponents - 1);
-            }
-            
-            ctx.fillRect(x * cellSize, y * cellSize, cellSize, cellSize);
-        }
+    // largest component → background
+    let biggest = componentList[0];
+    for (const k of componentList) {
+        if (componentSizes[k] > componentSizes[biggest]) biggest = k;
     }
+
+    // remaining components get unique colors
+    const remaining = componentList.filter(k => k !== biggest);
+    const palette = makePalette(remaining.length);
+
+    const colorMap = {};
+    remaining.forEach((lab, i) => {
+        colorMap[lab] = palette[i];
+    });
+
+    // background
+    colorMap[biggest] = "black";
+
+    return { labels, colorMap };
 }
 
+// ========================
+// Main loop
+// ========================
 function step() {
     const maxRows = rows();
 
-    // Add the new row to buffer
+    // add newest CA row
     rowBuffer.push(currentRow.slice());
+    if (rowBuffer.length > maxRows) rowBuffer.shift();
 
-    // If too many rows, remove oldest (scroll effect)
-    if (rowBuffer.length > maxRows) {
-        rowBuffer.shift();
+    // clear canvas
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // colorize all buffered rows
+    const { labels, colorMap } = colorize(rowBuffer);
+
+    // draw according to component labels
+    for (let r = 0; r < labels.length; r++) {
+        for (let c = 0; c < labels[r].length; c++) {
+            const label = labels[r][c];
+            ctx.fillStyle = colorMap[label] || "black";
+            ctx.fillRect(c * cellSize, r * cellSize, cellSize, cellSize);
+        }
     }
 
-    // Draw colorized version
-    drawColorized();
-
-    // Compute next row
+    // evolve state
     currentRow = computeNextRow(currentRow);
 
-    // Schedule next step
+    // schedule next
     setTimeout(step, STEP_DELAY);
 }
 
-// Start the loop
+// start evolution
 step();
