@@ -1,8 +1,4 @@
-// ========================
-// Aurora CA visualizer (radius-2, k=2)
-// ========================
-
-// ---- CANVAS SETUP ----
+// ==== Canvas setup ====
 const canvas = document.getElementById("caCanvas");
 const ctx = canvas.getContext("2d");
 
@@ -11,228 +7,116 @@ function resizeCanvas() {
     canvas.height = window.innerHeight;
 }
 resizeCanvas();
-window.addEventListener("resize", () => location.reload());
+window.addEventListener("resize", resizeCanvas);
 
-// ---- PARAMETERS ----
-const cellSize = 3;
-const L = Math.floor(canvas.width / cellSize);
-const steps = 4 * L;
-const STEP_DELAY = 15;
+// ==== Load PNG ====
+const img = new Image();
+img.src = "981788751.png";   // <-- change PNG name here
 
-// ---- CLASS II RULE LIST (from your file) ----
-const classIIrules = [
-  7,11,13,15,19,23,27,29,35,39,
-  47,55,59,71,79,104,112,152,
-  216,228,230,232,233,240
-];
+let pixelData = null;
+let imgW = 0;
+let imgH = 0;
 
-// ---- CHOOSE RANDOM RULE ----
-const ruleN = classIIrules[Math.floor(Math.random() * classIIrules.length)];
-console.log("Using rule:", ruleN);
+let cellH = 3;          // FIXED pixel row height (same as Rule 110)
+let maxRows = 0;
 
-// ===============================
-// BUILD RULE TABLE FOR (n, r=2, k=2)
-// ===============================
-const radius = 2;
-const k = 2;
-const neighborhoodSize = 2 * radius + 1;
-const ruleTable = {};
+const STEP_DELAY = 60;  // speed of evolution
 
-(function buildRule() {
-    // There are 2^(2r+1) possible neighborhoods
-    const numNeighborhoods = Math.pow(k, neighborhoodSize); // 2^5 = 32
-    let n = ruleN;
+let rowBuffer = [];     // lines currently displayed
+let pngRow = 0;         // which row of the PNG to read next
 
-    for (let i = 0; i < numNeighborhoods; i++) {
-        const output = n & 1;
-        n >>= 1;
 
-        // neighborhood encoded as e.g. "01001"
-        const bits = i.toString(2).padStart(neighborhoodSize, "0");
-        ruleTable[bits] = output;
+// =============================
+//  LOAD PNG + PREPARE DATA
+// =============================
+img.onload = function () {
+
+    // Hidden canvas to extract pixel data
+    const hidden = document.createElement("canvas");
+    hidden.width = img.width;
+    hidden.height = img.height;
+    const hctx = hidden.getContext("2d");
+    hctx.drawImage(img, 0, 0);
+
+    imgW = img.width;
+    imgH = img.height;
+
+    // Extract all pixel data once
+    pixelData = hctx.getImageData(0, 0, imgW, imgH).data;
+
+    // Fixed pixel height → calculate how many rows fit on screen
+    maxRows = Math.floor(canvas.height / cellH);
+
+    step();   // start animation
+};
+
+
+// =============================
+//  EXTRACT 1 PNG ROW
+// =============================
+function getPNGRow(y) {
+    const row = [];
+    const offset = y * imgW * 4;
+
+    for (let x = 0; x < imgW; x++) {
+        const i = offset + x * 4;
+        const r = pixelData[i];
+        const g = pixelData[i + 1];
+        const b = pixelData[i + 2];
+        row.push(`rgb(${r},${g},${b})`);
     }
-})();
-
-// ===============================
-// SEED INITIAL ROW
-// ===============================
-function makeSeed(length) {
-    const arr = new Array(length);
-    for (let i = 0; i < length; i++) {
-        arr[i] = Math.random() < 0.5 ? 1 : 0;
-    }
-    return arr;
-}
-const seed = makeSeed(L);
-
-// ===============================
-// EVOLVE THE CA FOR ALL STEPS
-// ===============================
-function evolveCA(seed, steps) {
-    const hist = [];
-    let row = seed.slice();
-
-    for (let t = 0; t < steps; t++) {
-        hist.push(row.slice());
-
-        const next = new Array(row.length);
-        for (let i = 0; i < row.length; i++) {
-            let neigh = "";
-            for (let d = -radius; d <= radius; d++) {
-                neigh += row[(i + d + row.length) % row.length];
-            }
-            next[i] = ruleTable[neigh];
-        }
-
-        row = next;
-    }
-    return hist;
+    return row;
 }
 
-const history = evolveCA(seed, steps);
 
-// ===============================
-// CONNECTED COMPONENTS (4-neighbor)
-// ===============================
-function computeComponents(buffer) {
-    const h = buffer.length;
-    const w = buffer[0].length;
+// =============================
+//  DRAW ONE ROW (FIXED SIZE)
+// =============================
+function drawRow(row, yIndex) {
+    const cellW = canvas.width / imgW;
 
-    const labels = Array.from({ length: h }, () => new Array(w).fill(0));
-    let currentLabel = 1;
-
-    const dirs = [
-        [1,0], [-1,0], [0,1], [0,-1]
-    ];
-
-    function bfs(sr, sc) {
-        const queue = [[sr, sc]];
-        labels[sr][sc] = currentLabel;
-        let count = 1;
-
-        while (queue.length > 0) {
-            const [r, c] = queue.shift();
-            for (const [dr, dc] of dirs) {
-                const nr = r + dr;
-                const nc = c + dc;
-                if (nr >= 0 && nr < h && nc >= 0 && nc < w) {
-                    if (buffer[nr][nc] === 1 && labels[nr][nc] === 0) {
-                        labels[nr][nc] = currentLabel;
-                        queue.push([nr, nc]);
-                        count++;
-                    }
-                }
-            }
-        }
-
-        return count;
-    }
-
-    const sizes = {};
-
-    for (let r = 0; r < h; r++) {
-        for (let c = 0; c < w; c++) {
-            if (buffer[r][c] === 1 && labels[r][c] === 0) {
-                const s = bfs(r, c);
-                sizes[currentLabel] = s;
-                currentLabel++;
-            }
-        }
-    }
-
-    return { labels, sizes };
-}
-
-// ===============================
-// AURORA PALETTE (approximation)
-// ===============================
-const auroraPaletteBase = [
-    "#2E1A47",
-    "#22436F",
-    "#0E7C86",
-    "#6BCF63",
-    "#F6C445",
-    "#E06D2F",
-    "#C02639"
-];
-
-function auroraPalette(n) {
-    const result = [];
-    for (let i = 0; i < n; i++) {
-        const t = i / (n - 1 || 1);
-        const idx = t * (auroraPaletteBase.length - 1);
-        const i0 = Math.floor(idx);
-        const i1 = Math.min(i0 + 1, auroraPaletteBase.length - 1);
-        const f  = idx - i0;
-
-        const c0 = hexToRGB(auroraPaletteBase[i0]);
-        const c1 = hexToRGB(auroraPaletteBase[i1]);
-
-        const r = Math.round(c0.r + f*(c1.r - c0.r));
-        const g = Math.round(c0.g + f*(c1.g - c0.g));
-        const b = Math.round(c0.b + f*(c1.b - c0.b));
-
-        result.push(`rgb(${r},${g},${b})`);
-    }
-    return result;
-}
-
-function hexToRGB(hex) {
-    const v = parseInt(hex.slice(1), 16);
-    return { 
-        r: (v >> 16) & 255,
-        g: (v >> 8) & 255,
-        b: v & 255
-    };
-}
-
-// ===============================
-// STATIC COLORIZATION
-// ===============================
-const { labels, sizes } = computeComponents(history);
-
-const comps = Object.keys(sizes).map(k => parseInt(k));
-let biggest = comps[0];
-for (const k of comps) {
-    if (sizes[k] > sizes[biggest]) biggest = k;
-}
-
-const remaining = comps.filter(k => k !== biggest);
-const palette = auroraPalette(remaining.length);
-
-const colorMap = { 0: "black" };
-remaining.forEach((lab, idx) => {
-    colorMap[lab] = palette[idx];
-});
-colorMap[biggest] = "black"; // largest → background
-
-// ===============================
-// ANIMATION: reveal line-by-line
-// ===============================
-let currentRow = 0;
-
-function drawUpTo(row) {
-    ctx.fillStyle = "black";
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-    for (let r = 0; r <= row && r < labels.length; r++) {
-        for (let c = 0; c < labels[r].length; c++) {
-            const lab = labels[r][c];
-            const col = colorMap[lab];
-            if (col !== "black") {
-                ctx.fillStyle = col;
-                ctx.fillRect(c * cellSize, r * cellSize, cellSize, cellSize);
-            }
-        }
+    for (let x = 0; x < row.length; x++) {
+        ctx.fillStyle = row[x];
+        ctx.fillRect(x * cellW, yIndex * cellH, cellW, cellH);
     }
 }
 
-function animate() {
-    drawUpTo(currentRow);
-    currentRow++;
-    if (currentRow < labels.length) {
-        setTimeout(animate, STEP_DELAY);
+
+// =============================
+//  DRAW FULL BUFFER
+// =============================
+function drawFullBuffer() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    for (let i = 0; i < rowBuffer.length; i++) {
+        drawRow(rowBuffer[i], i);
     }
 }
 
-animate();
+
+// =============================
+//        MAIN LOOP
+// =============================
+function step() {
+
+    // Read next PNG row
+    const newRow = getPNGRow(pngRow);
+    pngRow = (pngRow + 1) % imgH;
+
+    // Add it to buffer
+    rowBuffer.push(newRow);
+
+    // PHASE 1: Initial fill (NO scrolling)
+    if (rowBuffer.length < maxRows) {
+        drawFullBuffer();
+        return setTimeout(step, STEP_DELAY);
+    }
+
+    // PHASE 2: Scrolling (like Rule 110)
+    if (rowBuffer.length > maxRows) {
+        rowBuffer.shift();  // remove top row
+    }
+
+    drawFullBuffer();
+    setTimeout(step, STEP_DELAY);
+}
