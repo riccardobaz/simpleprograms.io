@@ -6,6 +6,7 @@ html, body {
     background: black;
     height: 100%;
     width: 100%;
+    position: fixed;
 }
 
 /* Canvas always behind everything */
@@ -21,15 +22,33 @@ html, body {
 /* Logo container */
 #logo-container {
     position: fixed;
-    top: 2rem;
-    left: 2rem;
+    top: 1.5rem;
+    left: 1.5rem;
     pointer-events: none;
     z-index: 9999;
 }
 
-/* Logo image */
+/* Logo image - responsive */
 #logo {
-    width: 260px;
+    width: min(260px, 40vw);
     height: auto;
     display: block;
+}
+
+/* Mobile adjustments */
+@media (max-width: 768px) {
+    #logo-container {
+        top: 1rem;
+        left: 1rem;
+    }
+    
+    #logo {
+        width: min(180px, 50vw);
+    }
+}
+
+@media (max-width: 480px) {
+    #logo {
+        width: min(140px, 45vw);
+    }
 }
