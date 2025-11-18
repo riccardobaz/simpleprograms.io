@@ -118,7 +118,7 @@ function startScrolling(img) {
         // Draw every stored row stretched horizontally
         for (let i = 0; i < buffer.length; i++) {
             const row = buffer[i];
-            ctx.drawImage(row, 0, 0, imgW, 1, 0, i, canvas.width, 1);
+            ctx.drawImage(row, 0, 0, Math.min(window.screen.width,imgW), 1, 0, i, canvas.width, 1);
         }
 
         nextRow++;
