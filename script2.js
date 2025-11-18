@@ -1,6 +1,53 @@
-// ==== Canvas setup ====
+/*************************************
+ *  SVG invert filter for the logo
+ *************************************/
+(function createInvertFilter() {
+    const svgNS = "http://www.w3.org/2000/svg";
+
+    const svg = document.createElementNS(svgNS, "svg");
+    svg.setAttribute("width", "0");
+    svg.setAttribute("height", "0");
+    svg.style.position = "absolute";
+
+    const filter = document.createElementNS(svgNS, "filter");
+    filter.setAttribute("id", "invert-filter");
+
+    const fe = document.createElementNS(svgNS, "feComponentTransfer");
+
+    const r = document.createElementNS(svgNS, "feFuncR");
+    r.setAttribute("type", "table");
+    r.setAttribute("tableValues", "1 0");
+
+    const g = document.createElementNS(svgNS, "feFuncG");
+    g.setAttribute("type", "table");
+    g.setAttribute("tableValues", "1 0");
+
+    const b = document.createElementNS(svgNS, "feFuncB");
+    b.setAttribute("type", "table");
+    b.setAttribute("tableValues", "1 0");
+
+    fe.appendChild(r);
+    fe.appendChild(g);
+    fe.appendChild(b);
+    filter.appendChild(fe);
+    svg.appendChild(filter);
+
+    document.body.appendChild(svg);
+})();
+
+/******************************************
+ *  Apply invert filter to logo
+ ******************************************/
+const logo = document.getElementById("logo");
+logo.style.filter = "url(#invert-filter)";
+
+
+/*************************************
+ *  Canvas setup
+ *************************************/
 const canvas = document.getElementById("caCanvas");
 const ctx = canvas.getContext("2d");
+ctx.imageSmoothingEnabled = false;
 
 function resizeCanvas() {
     canvas.width = window.innerWidth;
@@ -9,114 +56,81 @@ function resizeCanvas() {
 resizeCanvas();
 window.addEventListener("resize", resizeCanvas);
 
-// ==== Load PNG ====
-const img = new Image();
-img.src = "981788751.png";   // <-- change PNG name here
 
-let pixelData = null;
-let imgW = 0;
-let imgH = 0;
+/*************************************
+ *  Load list of PNG patterns
+ *************************************/
+let patternImages = [];
 
-let cellH = 3;          // FIXED pixel row height (same as Rule 110)
-let maxRows = 0;
-
-const STEP_DELAY = 60;  // speed of evolution
-
-let rowBuffer = [];     // lines currently displayed
-let pngRow = 0;         // which row of the PNG to read next
+fetch("patterns/index.json")
+    .then(res => res.json())
+    .then(list => {
+        patternImages = list.map(x => "patterns/" + x);
+        loadRandomPattern();
+    })
+    .catch(err => console.error("Could not load index.json", err));
 
 
-// =============================
-//  LOAD PNG + PREPARE DATA
-// =============================
-img.onload = function () {
+/*************************************
+ *  Load & scroll a pattern
+ *************************************/
+function loadRandomPattern() {
+    const img = new Image();
+    img.src = patternImages[Math.floor(Math.random() * patternImages.length)];
 
-    // Hidden canvas to extract pixel data
-    const hidden = document.createElement("canvas");
-    hidden.width = img.width;
-    hidden.height = img.height;
-    const hctx = hidden.getContext("2d");
-    hctx.drawImage(img, 0, 0);
-
-    imgW = img.width;
-    imgH = img.height;
-
-    // Extract all pixel data once
-    pixelData = hctx.getImageData(0, 0, imgW, imgH).data;
-
-    // Fixed pixel height → calculate how many rows fit on screen
-    maxRows = Math.floor(canvas.height / cellH);
-
-    step();   // start animation
-};
-
-
-// =============================
-//  EXTRACT 1 PNG ROW
-// =============================
-function getPNGRow(y) {
-    const row = [];
-    const offset = y * imgW * 4;
-
-    for (let x = 0; x < imgW; x++) {
-        const i = offset + x * 4;
-        const r = pixelData[i];
-        const g = pixelData[i + 1];
-        const b = pixelData[i + 2];
-        row.push(`rgb(${r},${g},${b})`);
-    }
-    return row;
+    img.onload = () => {
+        console.log("Loaded:", img.src);
+        startScrolling(img);
+    };
 }
 
 
-// =============================
-//  DRAW ONE ROW (FIXED SIZE)
-// =============================
-function drawRow(row, yIndex) {
-    const cellW = canvas.width / imgW;
+/*************************************
+ *  Scrolling animation
+ *************************************/
+function startScrolling(img) {
+    const imgW = img.width;
+    const imgH = img.height;
 
-    for (let x = 0; x < row.length; x++) {
-        ctx.fillStyle = row[x];
-        ctx.fillRect(x * cellW, yIndex * cellH, cellW, cellH);
+    let buffer = [];
+    let nextRow = 0;
+
+    function step() {
+        // 1px tall row canvas
+        const rowCanvas = document.createElement("canvas");
+        rowCanvas.width = imgW;
+        rowCanvas.height = 1;
+
+        const rctx = rowCanvas.getContext("2d");
+        rctx.imageSmoothingEnabled = false;
+
+        // Extract row
+        rctx.drawImage(img, 0, nextRow, imgW, 1, 0, 0, imgW, 1);
+
+        buffer.push(rowCanvas);
+
+        // Limit to screen height
+        if (buffer.length > canvas.height) buffer.shift();
+
+        // Clear display
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        // Draw every stored row stretched horizontally
+        for (let i = 0; i < buffer.length; i++) {
+            const row = buffer[i];
+            ctx.drawImage(row, 0, 0, imgW, 1, 0, i, canvas.width, 1);
+        }
+
+        nextRow++;
+
+        // When full PNG consumed → load a new one
+        if (nextRow >= imgH) {
+            loadRandomPattern();
+            return;
+        }
+
+        requestAnimationFrame(step);
     }
-}
 
-
-// =============================
-//  DRAW FULL BUFFER
-// =============================
-function drawFullBuffer() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-    for (let i = 0; i < rowBuffer.length; i++) {
-        drawRow(rowBuffer[i], i);
-    }
-}
-
-
-// =============================
-//        MAIN LOOP
-// =============================
-function step() {
-
-    // Read next PNG row
-    const newRow = getPNGRow(pngRow);
-    pngRow = (pngRow + 1) % imgH;
-
-    // Add it to buffer
-    rowBuffer.push(newRow);
-
-    // PHASE 1: Initial fill (NO scrolling)
-    if (rowBuffer.length < maxRows) {
-        drawFullBuffer();
-        return setTimeout(step, STEP_DELAY);
-    }
-
-    // PHASE 2: Scrolling (like Rule 110)
-    if (rowBuffer.length > maxRows) {
-        rowBuffer.shift();  // remove top row
-    }
-
-    drawFullBuffer();
-    setTimeout(step, STEP_DELAY);
+    step();
 }
