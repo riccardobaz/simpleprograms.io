@@ -1,5 +1,5 @@
 /*************************************
- *  Inject SVG invert filter via JS
+ *  SVG invert filter for the logo
  *************************************/
 (function createInvertFilter() {
     const svgNS = "http://www.w3.org/2000/svg";
@@ -31,72 +31,62 @@
     fe.appendChild(b);
     filter.appendChild(fe);
     svg.appendChild(filter);
+
     document.body.appendChild(svg);
 })();
 
 /******************************************
- *  Apply invert filter & position logo
+ *  Apply invert filter to logo
  ******************************************/
 const logo = document.getElementById("logo");
 logo.style.filter = "url(#invert-filter)";
-logo.style.position = "fixed";
-logo.style.top = "2rem";
-logo.style.left = "2rem";
-logo.style.pointerEvents = "none";
-logo.style.zIndex = "9999";
+
 
 /*************************************
- *  Canvas Setup (Mobile-safe)
+ *  Canvas setup
  *************************************/
 const canvas = document.getElementById("caCanvas");
-const ctx = canvas.getContext("2d", { alpha: false });
-
-// Prevent mobile scroll bounce
-document.body.style.touchAction = "none";
+const ctx = canvas.getContext("2d");
+ctx.imageSmoothingEnabled = false;
 
 function resizeCanvas() {
-    const dpr = window.devicePixelRatio || 1;
-
-    const vw = document.documentElement.clientWidth;
-    const vh = document.documentElement.clientHeight;
-
-    // Internal resolution
-    canvas.width = vw * dpr;
-    canvas.height = vh * dpr;
-
-    // CSS size
-    canvas.style.width = vw + "px";
-    canvas.style.height = vh + "px";
-
-    // Scale so drawing uses CSS pixels
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-
-    ctx.imageSmoothingEnabled = false;
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
 }
-
 resizeCanvas();
 window.addEventListener("resize", resizeCanvas);
 
+
 /*************************************
- * Load index.json → Pick a random PNG
+ *  Load list of PNG patterns
  *************************************/
 let patternImages = [];
 
 fetch("patterns/index.json")
-    .then(r => r.json())
+    .then(res => res.json())
     .then(list => {
-        patternImages = list.map(f => "patterns/" + f);
-        loadRandomPattern();      // Start!
-    });
+        patternImages = list.map(x => "patterns/" + x);
+        loadRandomPattern();
+    })
+    .catch(err => console.error("Could not load index.json", err));
 
+
+/*************************************
+ *  Load & scroll a pattern
+ *************************************/
 function loadRandomPattern() {
     const img = new Image();
     img.src = patternImages[Math.floor(Math.random() * patternImages.length)];
-    img.onload = () => startScrolling(img);
+
+    img.onload = () => {
+        console.log("Loaded:", img.src);
+        startScrolling(img);
+    };
 }
 
+
 /*************************************
- *  Fullscreen CA scrolling effect
+ *  Scrolling animation
  *************************************/
 function startScrolling(img) {
     const imgW = img.width;
@@ -106,7 +96,7 @@ function startScrolling(img) {
     let nextRow = 0;
 
     function step() {
-        // 1px-tall row canvas
+        // 1px tall row canvas
         const rowCanvas = document.createElement("canvas");
         rowCanvas.width = imgW;
         rowCanvas.height = 1;
@@ -114,27 +104,31 @@ function startScrolling(img) {
         const rctx = rowCanvas.getContext("2d");
         rctx.imageSmoothingEnabled = false;
 
-        // Copy one row from the PNG
+        // Extract row
         rctx.drawImage(img, 0, nextRow, imgW, 1, 0, 0, imgW, 1);
 
         buffer.push(rowCanvas);
 
-        // Remove older rows when beyond screen height
+        // Limit to screen height
         if (buffer.length > canvas.height) buffer.shift();
 
-        // Clear screen
+        // Clear display
         ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-        // Draw every row in buffer sequentially
+        // Draw every stored row stretched horizontally
         for (let i = 0; i < buffer.length; i++) {
-            ctx.drawImage(
-                buffer[i],
-                0, 0, imgW, 1,
-                0, i, canvas.width, 1
-            );
+            const row = buffer[i];
+            ctx.drawImage(row, 0, 0, imgW, 1, 0, i, canvas.width, 1);
         }
 
-        nextRow = (nextRow + 1) % imgH;
+        nextRow++;
+
+        // When full PNG consumed → load a new one
+        if (nextRow >= imgH) {
+            loadRandomPattern();
+            return;
+        }
+
         requestAnimationFrame(step);
     }
 
