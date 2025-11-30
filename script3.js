@@ -27,12 +27,11 @@ const columns = () => Math.floor(canvas.width / cellSize);
 const rows = () => Math.floor(canvas.height / cellSize);
 const STEP_DELAY = 80;
 
-// The CA rows (0/1), color rows use CSS color strings
-let currentRow = new Array(columns()).fill(0).map(() => Math.random() < 0.5 ? 1 : 0);
-let prevRow = currentRow.slice();  // first row is hidden
-let colorBuffer = [];  // stores {cells: [color strings]}
+// ==== Initial CA row (IMPORTANT FIX: all zeros!) ====
+let currentRow = new Array(columns()).fill(0);   // first row all black
+let colorBuffer = [];                            // stores colored rows only
 
-// ----- Compute Rule 110 next row -----
+// ---- Compute next Rule-110 row ----
 function computeNextRow(row) {
     const next = new Array(row.length).fill(0);
     for (let i = 0; i < row.length; i++) {
@@ -45,46 +44,46 @@ function computeNextRow(row) {
     return next;
 }
 
-// ----- Color block according to given rules -----
+// ---- Color the newest row according to your block rules ----
 function colorNewRow(row, above) {
     const C = row.length;
-    const colors = new Array(C).fill("#000000");  // default black
+    const colors = new Array(C).fill("#000000"); // black background
 
     let i = 0;
     while (i < C) {
         if (row[i] === 1) {
-            // find block start/end
-            let start = i;
+            // Find block of consecutive 1s
+            const start = i;
             while (i < C && row[i] === 1) i++;
-            let end = i - 1;
-            let length = end - start + 1;
+            const end = i - 1;
+            const length = end - start + 1;
 
-            // check above-left, above, above-right all black
-            // using cylinder topology
-            let ok = true;
+            // Check above-left, above, above-right are all black
+            let valid = true;
             for (let j = start; j <= end; j++) {
                 const L = above[(j - 1 + C) % C];
                 const M = above[j];
                 const R = above[(j + 1) % C];
                 if (!(L === 0 && M === 0 && R === 0)) {
-                    ok = false;
+                    valid = false;
                     break;
                 }
             }
 
-            // assign color if valid block
-            if (ok) {
+            // If valid block, assign colors based on length
+            if (valid) {
                 let col = "#000000";
                 if (length === 1) col = "red";
                 else if (length === 2) col = "white";
-                else if (length === 3) col = "#444444";     // dark gray (your picture)
+                else if (length === 3) col = "#444444"; // dark gray
                 else if (length === 4) col = "orange";
                 else if (length === 5) col = "purple";
                 else if (length === 6) col = "green";
                 else if (length === 7) col = "blue";
 
+                // Paint the block
                 for (let j = start; j <= end; j++) {
-                    if (row[j] === 1) colors[j] = col;
+                    colors[j] = col;
                 }
             }
         } else {
@@ -95,7 +94,7 @@ function colorNewRow(row, above) {
     return colors;
 }
 
-// ----- Drawing function -----
+// ---- Draw a colored row ----
 function drawColorRow(colors, y) {
     for (let x = 0; x < colors.length; x++) {
         ctx.fillStyle = colors[x];
@@ -103,38 +102,36 @@ function drawColorRow(colors, y) {
     }
 }
 
+// ---- Main animation loop ----
 function step() {
     const maxRows = rows();
 
-    // compute next CA row
+    // Compute next CA state
     const nextRow = computeNextRow(currentRow);
 
-    // color the new row (using currentRow as "above")
+    // Color the new row based on block rules + row above
     const colored = colorNewRow(nextRow, currentRow);
 
-    // push to buffer
+    // Add to buffer (scrolling)
     colorBuffer.push(colored);
-
-    // drop from top to keep scroll effect
     if (colorBuffer.length > maxRows) {
         colorBuffer.shift();
     }
 
-    // clear canvas
+    // Clear screen
     ctx.fillStyle = "#000000";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    // draw rows
+    // Draw all rows from top to bottom
     for (let y = 0; y < colorBuffer.length; y++) {
         drawColorRow(colorBuffer[y], y);
     }
 
-    // advance
-    prevRow = currentRow;
+    // Advance the CA
     currentRow = nextRow;
 
     setTimeout(step, STEP_DELAY);
 }
 
-// start
+// Start animation
 step();
