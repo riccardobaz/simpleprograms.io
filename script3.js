@@ -1,15 +1,43 @@
-// ==== Canvas setup ====
+// ======================
+//  CANVAS SETUP
+// ======================
 const canvas = document.getElementById("caCanvas");
 const ctx = canvas.getContext("2d");
 
+let cellSize = 3;
+let COLS = 0;
+let ROWS = 0;
+
+// Prevent logic running mid-resize
+let resizing = false;
+let colorBuffer = [];
+
+// Update canvas and recompute stable CA grid size
 function resizeCanvas() {
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
+
+    COLS = Math.max(20, Math.floor(canvas.width / cellSize));
+    ROWS = Math.max(20, Math.floor(canvas.height / cellSize));
 }
 resizeCanvas();
-window.addEventListener("resize", resizeCanvas);
 
-// ==== Rule 110 table ====
+// Debounced resize listener
+window.addEventListener("resize", () => {
+    resizing = true;
+    clearTimeout(window._rt);
+    window._rt = setTimeout(() => {
+        resizing = false;
+        resizeCanvas();
+        // Reinitialize buffer to avoid mismatched row lengths
+        colorBuffer = [];
+        firstRowInitialized = false;
+    }, 150);
+});
+
+// ======================
+//  RULE 110
+// ======================
 const rule110 = {
     "111": 0,
     "110": 1,
@@ -21,70 +49,67 @@ const rule110 = {
     "000": 0
 };
 
-// ==== Simulation parameters ====
-const cellSize = 3;
-const columns = () => Math.floor(canvas.width / cellSize);
-const rows = () => Math.floor(canvas.height / cellSize);
-const STEP_DELAY = 80;
+// CA state
+let currentRow = [];
+let firstRowInitialized = false;
 
-// ==== Initial CA row (IMPORTANT FIX: all zeros!) ====
-let currentRow = new Array(columns()).fill(0);   // first row all black
-let colorBuffer = [];                            // stores colored rows only
+// Initialize first row (all black)
+function initFirstRow() {
+    currentRow = new Array(COLS).fill(0);
+    firstRowInitialized = true;
+}
+initFirstRow();
 
-// ---- Compute next Rule-110 row ----
 function computeNextRow(row) {
-    const next = new Array(row.length).fill(0);
-    for (let i = 0; i < row.length; i++) {
-        const left = row[(i - 1 + row.length) % row.length];
-        const mid = row[i];
-        const right = row[(i + 1) % row.length];
-        const neighborhood = `${left}${mid}${right}`;
-        next[i] = rule110[neighborhood];
+    const next = new Array(COLS).fill(0);
+    for (let i = 0; i < COLS; i++) {
+        const L = row[(i - 1 + COLS) % COLS];
+        const M = row[i];
+        const R = row[(i + 1) % COLS];
+        const nbr = `${L}${M}${R}`;
+        next[i] = rule110[nbr];
     }
     return next;
 }
 
-// ---- Color the newest row according to your block rules ----
+// ======================
+//  COLORING RULES
+// ======================
 function colorNewRow(row, above) {
-    const C = row.length;
-    const colors = new Array(C).fill("#000000"); // black background
+    const colors = new Array(COLS).fill("#000000"); // default black
 
     let i = 0;
-    while (i < C) {
+    while (i < COLS) {
         if (row[i] === 1) {
-            // Find block of consecutive 1s
-            const start = i;
-            while (i < C && row[i] === 1) i++;
-            const end = i - 1;
-            const length = end - start + 1;
+            let start = i;
+            while (i < COLS && row[i] === 1) i++;
+            let end = i - 1;
+            let len = end - start + 1;
 
-            // Check above-left, above, above-right are all black
-            let valid = true;
+            // Check above-left, above, above-right all zero
+            let ok = true;
             for (let j = start; j <= end; j++) {
-                const L = above[(j - 1 + C) % C];
+                const L = above[(j - 1 + COLS) % COLS];
                 const M = above[j];
-                const R = above[(j + 1) % C];
+                const R = above[(j + 1) % COLS];
                 if (!(L === 0 && M === 0 && R === 0)) {
-                    valid = false;
+                    ok = false;
                     break;
                 }
             }
 
-            // If valid block, assign colors based on length
-            if (valid) {
+            if (ok) {
                 let col = "#000000";
-                if (length === 1) col = "red";
-                else if (length === 2) col = "white";
-                else if (length === 3) col = "#444444"; // dark gray
-                else if (length === 4) col = "orange";
-                else if (length === 5) col = "purple";
-                else if (length === 6) col = "green";
-                else if (length === 7) col = "blue";
+                if (len === 1) col = "red";
+                else if (len === 2) col = "white";
+                else if (len === 3) col = "#444444";   // dark grey
+                else if (len === 4) col = "orange";
+                else if (len === 5) col = "purple";
+                else if (len === 6) col = "green";
+                else if (len === 7) col = "blue";
 
-                // Paint the block
-                for (let j = start; j <= end; j++) {
+                for (let j = start; j <= end; j++)
                     colors[j] = col;
-                }
             }
         } else {
             i++;
@@ -94,44 +119,58 @@ function colorNewRow(row, above) {
     return colors;
 }
 
-// ---- Draw a colored row ----
-function drawColorRow(colors, y) {
-    for (let x = 0; x < colors.length; x++) {
+// ======================
+//  DRAWING
+// ======================
+function drawRow(colors, y) {
+    for (let x = 0; x < COLS; x++) {
         ctx.fillStyle = colors[x];
         ctx.fillRect(x * cellSize, y * cellSize, cellSize, cellSize);
     }
 }
 
-// ---- Main animation loop ----
+// ======================
+//  MAIN LOOP
+// ======================
+const STEP_DELAY = 80;
+
 function step() {
-    const maxRows = rows();
-
-    // Compute next CA state
-    const nextRow = computeNextRow(currentRow);
-
-    // Color the new row based on block rules + row above
-    const colored = colorNewRow(nextRow, currentRow);
-
-    // Add to buffer (scrolling)
-    colorBuffer.push(colored);
-    if (colorBuffer.length > maxRows) {
-        colorBuffer.shift();
+    if (resizing) {
+        setTimeout(step, STEP_DELAY);
+        return;
     }
 
-    // Clear screen
+    if (!firstRowInitialized) {
+        initFirstRow();
+        setTimeout(step, STEP_DELAY);
+        return;
+    }
+
+    // Compute new CA line
+    let nextRow = computeNextRow(currentRow);
+
+    // Color it
+    let colored = colorNewRow(nextRow, currentRow);
+
+    // Push to buffer
+    colorBuffer.push(colored);
+
+    // Scroll upward
+    if (colorBuffer.length > ROWS)
+        colorBuffer.shift();
+
+    // Clear canvas
     ctx.fillStyle = "#000000";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    // Draw all rows from top to bottom
-    for (let y = 0; y < colorBuffer.length; y++) {
-        drawColorRow(colorBuffer[y], y);
-    }
+    // Draw all stored rows
+    for (let y = 0; y < colorBuffer.length; y++)
+        drawRow(colorBuffer[y], y);
 
-    // Advance the CA
+    // Move forward
     currentRow = nextRow;
 
     setTimeout(step, STEP_DELAY);
 }
 
-// Start animation
 step();
