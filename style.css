@@ -33,6 +33,7 @@ html, body {
     width: min(260px, 40vw);
     height: auto;
     display: block;
+    filter: brightness(0) invert(1); 
 }
 
 /* Mobile adjustments */
