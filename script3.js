@@ -7,8 +7,6 @@
 // Example: { length: 9, color: 'orange', hex: '#ff8800' }
 
 const COLOR_PATTERNS = [
-    { length: 10, color: 'green', hex: '#00ff08' },
-    { length: 9, color: 'green', hex: '#00ff08' },
     { length: 8, color: 'yellow', hex: '#ffff00' },
     { length: 7, color: 'purple', hex: '#9900ff' },
     { length: 6, color: 'cyan', hex: '#00ffff' },
@@ -90,26 +88,34 @@ function computeNextRow(row, previousRow) {
     }
     
     // Check for patterns - process from longest to shortest (already sorted)
+    // Now with proper wrap-around support for cylindrical topology
     for (const pattern of COLOR_PATTERNS) {
         const len = pattern.length;
         const colorName = pattern.color;
         
-        for (let i = 1; i <= next.length - len - 1; i++) {
-            const before = next[i - 1];
-            const after = next[i + len];
+        // Check all positions including wrap-around
+        for (let i = 0; i < next.length; i++) {
+            // Get indices with wrap-around
+            const beforeIdx = (i - 1 + next.length) % next.length;
+            const afterIdx = (i + len) % next.length;
+            
+            const before = next[beforeIdx];
+            const after = next[afterIdx];
             
             if (before.state === 1 && after.state === 1) {
                 let allWhite = true;
                 let allBlackAbove = true;
                 
                 for (let j = 0; j < len; j++) {
-                    if (next[i + j].state !== 0) allWhite = false;
-                    if (previousRow && previousRow[i + j].state !== 1) allBlackAbove = false;
+                    const idx = (i + j) % next.length;
+                    if (next[idx].state !== 0) allWhite = false;
+                    if (previousRow && previousRow[idx].state !== 1) allBlackAbove = false;
                 }
                 
                 if (allWhite && allBlackAbove) {
                     for (let j = 0; j < len; j++) {
-                        next[i + j].color = colorName;
+                        const idx = (i + j) % next.length;
+                        next[idx].color = colorName;
                     }
                 }
             }
