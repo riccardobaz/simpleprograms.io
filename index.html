@@ -8,6 +8,7 @@
     <title>simpleprograms.io</title>
     <link rel="stylesheet" href="style.css" />
 </head>
+
 <body>
     <!-- Background CA canvas -->
     <canvas id="caCanvas"></canvas>
@@ -16,7 +17,13 @@
     <div id="logo-container">
         <img id="logo" src="logo.svg" alt="simpleprograms logo" />
     </div>
-    
-    <script src="script3.js"></script>
+
+    <!-- Dynamic script loader: ALWAYS loads fresh script -->
+    <script>
+        const script = document.createElement("script");
+        script.src = "script3.js?v=" + Date.now();  // Unique on every load
+        document.head.appendChild(script);
+    </script>
+
 </body>
 </html>
