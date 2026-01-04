@@ -7,6 +7,8 @@
 // Example: { length: 9, color: 'orange', hex: '#ff8800' }
 
 const COLOR_PATTERNS = [
+    { length: 11, color: 'orange', hex: '#FF6600' },
+    { length: 10, color: 'lime', hex: '#00FF66' },
     { length: 9, color: 'green', hex: '#66FF00' },
     { length: 8, color: 'yellow', hex: '#ffff00' },
     { length: 7, color: 'purple', hex: '#9900ff' },
