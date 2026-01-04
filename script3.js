@@ -9,7 +9,7 @@
 const COLOR_PATTERNS = [
     { length: 11, color: 'lightgray', hex: '#D3D3D3' },
     { length: 10, color: 'lime', hex: '#00FF66' },
-    { length: 9, color: 'green', hex: '#66FF00' },
+    { length: 9, color: 'green', hex: '#00FF00' },
     { length: 8, color: 'yellow', hex: '#ffff00' },
     { length: 7, color: 'purple', hex: '#9900ff' },
     { length: 6, color: 'cyan', hex: '#00ffff' },
