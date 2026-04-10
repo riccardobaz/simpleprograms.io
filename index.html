@@ -298,7 +298,7 @@ function initGame(){
   const raw=Math.floor(W/CELL);
   COLS=raw-(raw%14);
   ROWS=Math.floor(H/CELL);
-  shipRow=ROWS-20;
+  shipRow=ROWS-15;
 
   caState=new Uint8Array(COLS);
   for(let i=0;i<COLS;i++) caState[i]=ETHER[i%14];
@@ -313,7 +313,7 @@ function initGame(){
 
   scrollY=0;scrollSpeed=0.8;baseSpeed=0.8;
   generation=0;
-  perturbChance=0.015;perturbTimer=0;
+  perturbChance=0.1;perturbTimer=0;
   ship.x=Math.floor(COLS/2);
   shipVx=0;shipVy=0;
   score=0;lives=3;
