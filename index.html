@@ -14,7 +14,7 @@
     overflow:hidden;user-select:none;touch-action:none;
   }
   .top-bar{
-    display:flex;align-items:center;justify-content:space-between;
+    display:none;align-items:center;justify-content:space-between;
     padding:6px 16px;border-bottom:1px solid #1a1a22;
     flex-shrink:0;background:#0a0a0f;z-index:20;
   }
@@ -25,6 +25,9 @@
     display:flex;align-items:center;justify-content:space-between;
     padding:5px 16px;border-bottom:1px solid #1a1a22;
     flex-shrink:0;background:#0a0a0f;z-index:20;
+    position: absolute;
+    bottom: 0;
+    right: 0;
   }
   .hud-left,.hud-right{display:flex;align-items:center;gap:10px}
   .hud-center{display:flex;align-items:center;gap:12px}
@@ -83,27 +86,27 @@
   <div class="sub">simple programs endless runner</div>
 </div>
 
-<div class="hud-bar">
-  <div class="hud-left">
-    <div>
-      <div class="score-label">score</div>
-      <div class="score-display" id="scoreDisp">0</div>
-    </div>
-  </div>
-  <div class="hud-center">
-    <div class="hp-group">
-      <div class="hp-label">aura</div>
-      <div class="hp-track"><div class="hp-fill" id="auraFill"></div></div>
-    </div>
-    <div class="stat">speed <em id="speedDisp">×1.0</em></div>
-    <div class="stat" id="comboDisp" style="color:#333"></div>
-  </div>
-  <div class="hud-right">
-    <div class="lives-display" id="livesDisp">♥♥♥</div>
-  </div>
-</div>
 
 <div class="arena" id="arenaWrap">
+  <div class="hud-bar">
+    <div class="hud-left">
+      <div>
+        <div class="score-label">score</div>
+        <div class="score-display" id="scoreDisp">0</div>
+      </div>
+    </div>
+    <div class="hud-center">
+      <div class="hp-group">
+        <div class="hp-label">aura</div>
+        <div class="hp-track"><div class="hp-fill" id="auraFill"></div></div>
+      </div>
+      <div class="stat">speed <em id="speedDisp">×1.0</em></div>
+      <div class="stat" id="comboDisp" style="color:#333"></div>
+    </div>
+    <div class="hud-right">
+      <div class="lives-display" id="livesDisp">♥♥♥</div>
+    </div>
+  </div>
   <canvas id="c"></canvas>
   <div class="overlay" id="overlay">
     <h1 id="olTitle" style="color:#ffdd00">SP 110 RUNNER</h1>
@@ -295,7 +298,7 @@ function initGame(){
   const raw=Math.floor(W/CELL);
   COLS=raw-(raw%14);
   ROWS=Math.floor(H/CELL);
-  shipRow=ROWS-5;
+  shipRow=ROWS-20;
 
   caState=new Uint8Array(COLS);
   for(let i=0;i<COLS;i++) caState[i]=ETHER[i%14];
