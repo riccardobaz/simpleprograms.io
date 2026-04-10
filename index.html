@@ -1,6 +1,9 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap" rel="stylesheet">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 <title>SP 110 Runner</title>
@@ -24,6 +27,45 @@
     background-repeat: no-repeat;
     position: absolute;
     cursor: pointer;
+}
+
+#menu {
+    position: absolute;
+    width: calc(100vw - 128px);
+    background-color: #f5ebcb;
+    color: black;
+    z-index: 12;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 32px;
+    box-sizing: border-box;
+    backdrop-filter: blur(3px);
+    font-size: 18px;
+    border-radius: 12px;
+    border: black solid 4px;
+    border-style: 8px;
+    display: none;
+}
+
+@media (max-width: 600px) {
+  #menu {
+    position: absolute;
+    width: calc(100vw - 32px);
+    background-color: #f5ebcb;
+    color: black;
+    z-index: 12;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 12px;
+    box-sizing: border-box;
+    backdrop-filter: blur(3px);
+    font-size: 12px;
+    border-radius: 12px;
+    border: black solid 4px;
+    border-style: 8px;
+}
 }
   .top-bar{
     display:none;align-items:center;justify-content:space-between;
@@ -104,6 +146,11 @@
 <div class="arena" id="arenaWrap">
         <!-- Logo -->
     <div id="logo-container">
+    </div>
+        <div id="menu">
+        Simple Programs is a research and design laboratory founded by Alessandro Codello, Giacomo Viviani and Riccardo Ben Alì Zinati.
+The lab builds on years of research in theoretical physics, statistical mechanics and complex systems to study how complexity emerges from simple, elementary rules. Visual exploration is integral to this research — a means of discovery, rather than mere illustration. Design, in this context, is a process of selection and refinement: identifying structures within new computational spaces and bringing them into material form. 
+Whether one sees science or design depends on where one looks: both are expressions of the same inquiry.
     </div>
   <div class="hud-bar">
     <div class="hud-left">
