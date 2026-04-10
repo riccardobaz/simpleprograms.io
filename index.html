@@ -6,7 +6,9 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap" rel="stylesheet">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>SP 110 Runner</title>
+<title>Simple Programs</title>
+<script src="joy.js"></script>
+<link rel="icon" href="favicon.ico" type="image/x-icon"/>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&display=swap');
   *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -141,9 +143,40 @@
   .overlay .rule-tag{font-size:8px;color:#2a2a2a;margin-top:16px;letter-spacing:0.1em;text-transform:uppercase}
 </style>
 </head>
-<body onload="startGame()" onclick="showMenu()">
+<body onload="startGame()">
 
+<div id="joyDiv"></div>
 
+<style>
+  #joyDiv {
+    width:100px;
+    height:100px;
+    position:absolute;
+    z-index:9999;
+    bottom:0;
+    left:12px;
+    margin-bottom:20px;
+  }
+  @media (min-width: 600px) {
+  #joyDiv {
+      display: none;
+  }
+}
+</style>
+
+<script type="text/javascript">
+// Create JoyStick object into the DIV 'joyDiv'
+var joy = new JoyStick('joyDiv', {
+  internalFillColor: '#f501f5',
+  externalStrokeColor: '#f501f5',
+  // https://github.com/bobboteck/JoyStick
+});
+setInterval(function(){
+  //console.log('x',joy.GetX());
+  //console.log('y',joy.GetY()); 
+}, 100);
+
+</script>
 
 <div class="top-bar">
   <h1><em>SP 110</em> Runner</h1>
@@ -153,12 +186,12 @@
 
 <div class="arena" id="arenaWrap">
         <!-- Logo -->
-    <div id="logo-container" onclick="showMenu()">
+    <div id="logo-container" >
     </div>
         <div id="menu">
         <div class="heading">
           <h3>About</h3>
-          <h2 onclick="closeModal()">&#x2715;</h2>
+          <h2 onclick="closeModal()" on>&#x2715;</h2>
         </div>
         Simple Programs is a research and design laboratory founded by Alessandro Codello, Giacomo Viviani and Riccardo Ben Alì Zinati.
 The lab builds on years of research in theoretical physics, statistical mechanics and complex systems to study how complexity emerges from simple, elementary rules. Visual exploration is integral to this research — a means of discovery, rather than mere illustration. Design, in this context, is a process of selection and refinement: identifying structures within new computational spaces and bringing them into material form. 
@@ -1054,6 +1087,12 @@ function startGame(){
 document.addEventListener('click', e => {
   console.log(e.clientX < 200 && e.clientY < 120)
   if(e.clientX < 200 && e.clientY < 120) {
+    document.getElementById('menu').classList.add('show');
+  }
+})
+
+document.addEventListener('touchstart', e => {
+  if(e.touches[0].clientX < 200 && e.touches[0].clientY < 120) {
     document.getElementById('menu').classList.add('show');
   }
 })
