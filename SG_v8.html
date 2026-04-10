@@ -1,0 +1,990 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>SP 110 Runner</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&display=swap');
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  body{
+    background:#000;color:#c0c0c8;
+    font-family:'JetBrains Mono',monospace;
+    height:100vh;display:flex;flex-direction:column;
+    overflow:hidden;user-select:none;touch-action:none;
+  }
+  .top-bar{
+    display:flex;align-items:center;justify-content:space-between;
+    padding:6px 16px;border-bottom:1px solid #1a1a22;
+    flex-shrink:0;background:#0a0a0f;z-index:20;
+  }
+  .top-bar h1{font-size:13px;font-weight:400;letter-spacing:0.02em}
+  .top-bar h1 em{color:#ffdd00;font-style:normal}
+  .top-bar .sub{font-size:10px;color:#444;letter-spacing:0.04em}
+  .hud-bar{
+    display:flex;align-items:center;justify-content:space-between;
+    padding:5px 16px;border-bottom:1px solid #1a1a22;
+    flex-shrink:0;background:#0a0a0f;z-index:20;
+  }
+  .hud-left,.hud-right{display:flex;align-items:center;gap:10px}
+  .hud-center{display:flex;align-items:center;gap:12px}
+  .score-display{
+    font-size:18px;font-weight:700;color:#ffdd00;
+    text-shadow:0 0 12px rgba(255,221,0,0.25);min-width:60px;
+  }
+  .score-label{font-size:8px;color:#555;letter-spacing:0.08em;text-transform:uppercase}
+  .lives-display{font-size:18px;color:#ff3344;letter-spacing:2px}
+  .shield-group{display:flex;align-items:center;gap:6px}
+  .shield-label{font-size:8px;color:#444;letter-spacing:0.06em;text-transform:uppercase}
+  .shield-track{width:60px;height:6px;background:#111;border:1px solid #1a1a22;border-radius:1px;overflow:hidden}
+  .shield-fill{height:100%;background:#00aaaa;transition:width 0.1s;border-radius:1px}
+  .hp-group{display:flex;align-items:center;gap:6px}
+  .hp-label{font-size:8px;color:#444;letter-spacing:0.06em;text-transform:uppercase}
+  .hp-track{width:80px;height:6px;background:#111;border:1px solid #1a1a22;border-radius:1px;overflow:hidden}
+  .hp-fill{height:100%;background:#44cc44;transition:width 0.05s;border-radius:1px}
+  .stat{font-size:9px;color:#333}
+  .stat em{color:#555;font-style:normal}
+  .arena{flex:1;display:flex;align-items:center;justify-content:center;position:relative;background:#000}
+  canvas{image-rendering:pixelated;display:block}
+  .controls-hint{
+    font-size:8px;color:#2a2a2a;text-align:center;
+    padding:4px;border-top:1px solid #1a1a22;flex-shrink:0;
+    background:#0a0a0f;letter-spacing:0.04em;
+  }
+  .overlay{
+    position:absolute;inset:0;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    background:rgba(0,0,0,0.92);z-index:30;gap:4px;
+  }
+  .overlay.hidden{display:none}
+  .overlay h1{font-size:26px;font-weight:700;letter-spacing:0.03em;text-shadow:0 0 24px rgba(255,221,0,0.3)}
+  .overlay p{font-size:11px;color:#555;text-align:center;margin:1px 0}
+  .overlay .bright{color:#999}
+  .overlay .hl{color:#ffdd00}
+  .overlay .rd{color:#ff3344}
+  .overlay .mg{color:#ff00ff}
+  .overlay .cy{color:#00cccc}
+  .overlay .bl{color:#0088ff}
+  .overlay .dim{color:#333}
+  .overlay button{
+    margin-top:14px;background:none;border:1px solid #ffdd00;color:#ffdd00;
+    font-family:inherit;font-size:14px;font-weight:500;
+    padding:10px 36px;cursor:pointer;letter-spacing:0.04em;transition:all 0.15s;
+  }
+  .overlay button:hover{background:#ffdd00;color:#000}
+  .overlay .hs{font-size:9px;color:#333;margin-top:8px}
+  .overlay .rule-tag{font-size:8px;color:#2a2a2a;margin-top:16px;letter-spacing:0.1em;text-transform:uppercase}
+</style>
+</head>
+<body>
+
+<div class="top-bar">
+  <h1><em>SP 110</em> Runner</h1>
+  <div class="sub">simple programs endless runner</div>
+</div>
+
+<div class="hud-bar">
+  <div class="hud-left">
+    <div>
+      <div class="score-label">score</div>
+      <div class="score-display" id="scoreDisp">0</div>
+    </div>
+  </div>
+  <div class="hud-center">
+    <div class="hp-group">
+      <div class="hp-label">aura</div>
+      <div class="hp-track"><div class="hp-fill" id="auraFill"></div></div>
+    </div>
+    <div class="stat">speed <em id="speedDisp">×1.0</em></div>
+    <div class="stat" id="comboDisp" style="color:#333"></div>
+  </div>
+  <div class="hud-right">
+    <div class="lives-display" id="livesDisp">♥♥♥</div>
+  </div>
+</div>
+
+<div class="arena" id="arenaWrap">
+  <canvas id="c"></canvas>
+  <div class="overlay" id="overlay">
+    <h1 id="olTitle" style="color:#ffdd00">SP 110 RUNNER</h1>
+    <p class="bright" id="olSub">survive the simple programs</p>
+    <p>shoot <span class="rd">colored structures</span> to destroy them · points + benefits</p>
+    <p><span class="rd">red</span>=1hit <span class="hl">yellow</span>=2 <span class="bl">blue</span>=3→wpn <span class="mg">magenta</span>=4→shield <span style="color:#00ff00">green</span>=6→life</p>
+    <p>contact drains aura · <span class="rd">red/green</span> = high damage · <span class="bl">blue/cyan</span> = low</p>
+    <p>destroy <span style="color:#00ff00">green</span> / <span style="color:#9900ff">purple</span> to restore aura</p>
+    <p class="dim" style="margin-top:6px">← → ↑ ↓ or WASD to move · touch sides on mobile</p>
+    <p class="dim">space / enter to start</p>
+    <button id="btn">▶ PLAY</button>
+    <div class="hs" id="hsDisp"></div>
+    <div class="rule-tag">SimplePrograms 110</div>
+  </div>
+</div>
+
+<div class="controls-hint">
+  ← → ↑ ↓ move &nbsp;·&nbsp; auto-fire destroys structures &nbsp;·&nbsp; touch: left/right halves to move
+</div>
+
+<script>
+const canvas=document.getElementById("c");
+const ctx=canvas.getContext("2d");
+const CELL=6;
+
+let W,H;
+function resize(){
+  const wrap=document.getElementById('arenaWrap');
+  W=canvas.width=wrap.clientWidth;
+  H=canvas.height=wrap.clientHeight;
+}
+resize();
+window.addEventListener("resize",resize);
+
+// =====================================================
+// COLOR PATTERNS
+// =====================================================
+const COLOR_PATTERNS=[
+  {length:11,color:'lightgray',hex:'#D3D3D3'},
+  {length:10,color:'darkgreen',hex:'#023d33'},
+  {length:9, color:'green',    hex:'#00FF00'},
+  {length:8, color:'yellow',   hex:'#ffff00'},
+  {length:7, color:'purple',   hex:'#9900ff'},
+  {length:6, color:'cyan',     hex:'#00ffff'},
+  {length:5, color:'magenta',  hex:'#ff00ff'},
+  {length:4, color:'blue',     hex:'#0066ff'},
+  {length:3, color:'darkgrey', hex:'#404040'},
+  {length:2, color:'silver',    hex:'#ffffff'},
+  {length:1, color:'red',      hex:'#ff0000'},
+];
+COLOR_PATTERNS.sort((a,b)=>b.length-a.length);
+
+const HEX_MAP={black:'#000000',white:'#000000',darkgrey:'#404040'};
+COLOR_PATTERNS.forEach(p=>HEX_MAP[p.color]=p.hex);
+function displayHex(c){return HEX_MAP[c]||'#000000';}
+
+const GLOW={
+  yellow:'rgba(255,255,0,',red:'rgba(255,0,0,',magenta:'rgba(255,0,255,',
+  cyan:'rgba(0,255,255,',green:'rgba(0,255,0,',blue:'rgba(0,102,255,',
+  purple:'rgba(153,0,255,',silver:'rgba(255,255,255,',white:'rgba(255,255,255,',
+};
+
+// =====================================================
+// RULE 110
+// =====================================================
+const RULE=[0,1,1,1,0,1,1,0];
+function r110(L,M,R){return RULE[(L<<2)|(M<<1)|R];}
+function evolve(prev){
+  const n=prev.length,next=new Uint8Array(n);
+  for(let i=0;i<n;i++) next[i]=r110(prev[(i-1+n)%n],prev[i],prev[(i+1)%n]);
+  return next;
+}
+
+function computeColors(nextState,prevState,prevColors,N){
+  const nc=new Array(N);
+  for(let i=0;i<N;i++) nc[i]=nextState[i]?'black':'white';
+  if(prevColors){
+    for(let i=0;i<N;i++){
+      if(nextState[i]===0&&prevColors[i]!=='black'&&prevColors[i]!=='white')
+        nc[i]=prevColors[i];
+    }
+  }
+  for(const pat of COLOR_PATTERNS){
+    const len=pat.length;
+    for(let i=0;i<N;i++){
+      if(nextState[(i-1+N)%N]===1&&nextState[(i+len)%N]===1){
+        let ok=true;
+        for(let j=0;j<len;j++){
+          if(nextState[(i+j)%N]!==0){ok=false;break;}
+          if(prevState&&prevState[(i+j)%N]!==1){ok=false;break;}
+        }
+        if(ok) for(let j=0;j<len;j++) nc[(i+j)%N]=pat.color;
+      }
+    }
+  }
+  return nc;
+}
+
+const ETHER=[0,0,0,1,0,0,1,1,0,1,1,1,1,1];
+
+// =====================================================
+// TUNABLE: HITS TO DESTROY & POINTS
+// =====================================================
+const HITS_TO_DESTROY={
+  red:1, silver:2, yellow:20, blue:4, cyan:12,
+  magenta:8, lightgray:4, purple:5, green:6, darkgreen:7,
+};
+const SHOOT_PTS={
+  red:1, silver:1, yellow:2, blue:3, cyan:3,
+  magenta:5, purple:6, lightgray:8, green:8, darkgreen:12,
+};
+
+// =====================================================
+// GAME STATE
+// =====================================================
+let COLS,ROWS;
+let caState,caColors;
+let rowBuffer=[];
+let scrollY=0;
+let scrollSpeed=0.8,baseSpeed=0.8;
+let generation=0;
+let perturbChance=0,perturbTimer=0;
+
+let ship={x:0};
+let shipRow;
+let score=0,lives=3;
+let gameActive=false;
+let hitFlash=0,iframes=0;
+let highScore=0;
+try{highScore=parseInt(localStorage.getItem('sp110hs')||'0');}catch(e){}
+let fx=[],trails=[],screenShake=0;
+let bullets=[],shootTimer=0;
+
+let combo=0,comboTimer=0;
+const COMBO_WINDOW=60;
+let popups=[];
+
+let weaponTier=0,weaponTimer=0,weaponXP=0;
+const WEAPON_XP_DUAL=3;
+const WEAPON_XP_TRIPLE=7;
+const WEAPON_DURATION=600;
+const SHOOT_RATE=14;
+const BULLET_SPEED=6;
+
+let shipVx=0,shipVy=0;
+const ACCEL=0.1,FRICTION=0.85,MAX_SPEED=1.8;
+
+// =====================================================
+// AURA SYSTEM — unified shield/HP as always-on energy field
+// Contact with hazards drains aura. Aura = 0 → lose life → refill.
+// Only green/purple structure kills restore aura.
+// =====================================================
+let aura=100;
+const AURA_MAX=100;
+
+// Aura healed when DESTROYING a structure of this color (tunable!)
+const COLOR_HEAL={
+  green:   25,    // big heal — 6 hits to destroy
+  purple:  20,    // good heal — 5 hits to destroy
+};
+
+// Per-color damage per frame per touching cell (tunable!)
+const COLOR_DAMAGE={
+  red:      1.8,    // spike — high damage
+  silver:   0.3,    // very low — common small structure
+  yellow:   0.8,    // steady medium
+  blue:     0.4,    // low persistent
+  cyan:     0.3,    // low (dangerous in groups)
+  magenta:  0.6,    // moderate (risk-reward)
+  green:    2.5,    // very high density damage
+  purple:   0.7,    // moderate
+  lightgray:0.5,    // moderate
+  darkgreen:3.0,    // almost lethal zone
+};
+
+// =====================================================
+// STRUCTURE ID SYSTEM
+// Each row stores struct[] — an Int32Array of structure IDs.
+// IDs propagate top-down during advanceCA for same-color
+// vertically/horizontally connected cells.
+// =====================================================
+let nextStructId=1;
+let structHP=new Map(); // structId → {hp, maxHp, color}
+
+// =====================================================
+// INIT
+// =====================================================
+function initGame(){
+  const raw=Math.floor(W/CELL);
+  COLS=raw-(raw%14);
+  ROWS=Math.floor(H/CELL);
+  shipRow=ROWS-5;
+
+  caState=new Uint8Array(COLS);
+  for(let i=0;i<COLS;i++) caState[i]=ETHER[i%14];
+  caColors=new Array(COLS);
+  for(let i=0;i<COLS;i++) caColors[i]=caState[i]?'black':'white';
+
+  rowBuffer=[];
+  nextStructId=1;
+  structHP.clear();
+
+  for(let r=0;r<ROWS+60;r++) advanceCA();
+
+  scrollY=0;scrollSpeed=0.8;baseSpeed=0.8;
+  generation=0;
+  perturbChance=0.015;perturbTimer=0;
+  ship.x=Math.floor(COLS/2);
+  shipVx=0;shipVy=0;
+  score=0;lives=3;
+  aura=AURA_MAX;
+  hitFlash=0;iframes=0;fx=[];trails=[];screenShake=0;
+  bullets=[];shootTimer=0;
+  combo=0;comboTimer=0;popups=[];
+  weaponTier=0;weaponTimer=0;weaponXP=0;
+  updateUI();
+}
+
+// =====================================================
+// ADVANCE CA + ASSIGN STRUCTURE IDs
+// =====================================================
+function advanceCA(){
+  let ns=evolve(caState);
+
+  if(Math.random()<perturbChance){
+    const pos=Math.floor(Math.random()*COLS);
+    const sz=1+Math.floor(Math.random()*3);
+    for(let i=0;i<sz;i++) ns[(pos+i)%COLS]^=1;
+  }
+
+  const nc=computeColors(ns,caState,caColors,COLS);
+
+  // Create row with struct ID array
+  const structArr=new Int32Array(COLS);
+  const row={colors:nc.slice(),struct:structArr};
+  rowBuffer.push(row);
+
+  // Assign structure IDs by propagation
+  const prev=rowBuffer.length>=2?rowBuffer[rowBuffer.length-2]:null;
+  for(let c=0;c<COLS;c++){
+    const col=nc[c];
+    // Skip ether/background cells
+    if(col==='black'||col==='white'||col==='darkgrey') continue;
+
+    // Try to inherit ID from parent row (same color, vertical+diagonal neighbors)
+    if(prev){
+      let parentId=0;
+      for(let dc=-1;dc<=1;dc++){
+        const pc=(c+dc+COLS)%COLS;
+        if(prev.struct[pc]>0&&prev.colors[pc]===col){
+          parentId=prev.struct[pc];
+          break;
+        }
+      }
+      if(parentId>0){ structArr[c]=parentId; continue; }
+    }
+
+    // Try horizontal neighbor in current row (already assigned, left to right)
+    if(c>0&&structArr[c-1]>0&&nc[c-1]===col){
+      structArr[c]=structArr[c-1];
+      continue;
+    }
+
+    // New structure — assign fresh ID
+    structArr[c]=nextStructId++;
+  }
+
+  if(rowBuffer.length>ROWS+200) rowBuffer.shift();
+  caState=ns;
+  caColors=nc;
+  generation++;
+}
+
+// =====================================================
+// DESTROY STRUCTURE BY ID — wipes all cells with that ID
+// =====================================================
+function destroyStructure(structId,structColor){
+  let cx=0,cy=0,count=0;
+
+  for(let i=0;i<rowBuffer.length;i++){
+    const row=rowBuffer[i];
+    const screenRow=rowBuffer.length-1-i;
+    for(let c=0;c<COLS;c++){
+      if(row.struct[c]===structId){
+        row.colors[c]='darkgrey';
+        row.struct[c]=0;
+        const px=c*CELL+CELL/2;
+        const py=screenRow*CELL+CELL/2;
+        cx+=px;cy+=py;count++;
+        if(Math.random()<0.4) spawnFX(px,py,structColor,2);
+      }
+    }
+  }
+
+  if(count===0) return{cx:0,cy:0,count:0};
+  cx/=count;cy/=count;
+  spawnFX(cx,cy,structColor,12);
+  return{cx,cy,count};
+}
+
+// =====================================================
+// SHOOTING
+// =====================================================
+function fireWeapon(){
+  const sx=ship.x*CELL+CELL*0.5;
+  const sy=Math.floor(shipRow)*CELL-CELL;
+  if(weaponTier===0){
+    bullets.push({x:sx,y:sy,vx:0,life:122});
+  }else if(weaponTier===1){
+    bullets.push({x:sx-CELL*0.8,y:sy,vx:-0.3,life:122});
+    bullets.push({x:sx+CELL*0.8,y:sy,vx:0.3,life:122});
+  }else{
+    bullets.push({x:sx,y:sy,vx:0,life:124});
+    bullets.push({x:sx-CELL,y:sy+CELL*0.3,vx:-0.5,life:120});
+    bullets.push({x:sx+CELL,y:sy+CELL*0.3,vx:0.5,life:120});
+  }
+}
+
+function spawnFX(x,y,colorName,n){
+  const hex=displayHex(colorName);
+  for(let i=0;i<n;i++){
+    fx.push({x,y,vx:(Math.random()-0.5)*4,vy:(Math.random()-0.5)*4-0.5,
+      life:14+Math.random()*14,hex,colorName,size:2+Math.random()*3});
+  }
+}
+
+// =====================================================
+// UPDATE
+// =====================================================
+function update(){
+  if(!gameActive) return;
+
+  shootTimer++;
+  const rate=weaponTier>=2?SHOOT_RATE-3:SHOOT_RATE;
+  if(shootTimer>=rate){shootTimer=0;fireWeapon();}
+
+  scrollY+=scrollSpeed;
+  while(scrollY>=CELL){scrollY-=CELL;advanceCA();score+=1;}
+
+  for(const b of bullets){b.y-=BULLET_SPEED;b.x+=(b.vx||0);b.life--;}
+
+  // =====================================================
+  // BULLET → STRUCTURE COLLISION
+  // =====================================================
+  for(const b of bullets){
+    if(b.dead) continue;
+    const baseCol=Math.floor(b.x/CELL);
+    const screenRow=Math.floor(b.y/CELL);
+    const bi=rowBuffer.length-1-screenRow;
+    if(bi<0||bi>=rowBuffer.length) continue;
+
+    for(let offset=-1;offset<=1;offset++){
+      const col=baseCol+offset;
+      if(col<0||col>=COLS) continue;
+      const cellColor=rowBuffer[bi].colors[col];
+
+      if(cellColor==='black'||cellColor==='white'||cellColor==='darkgrey') continue;
+      const maxHP=HITS_TO_DESTROY[cellColor];
+      if(!maxHP) continue;
+
+      const structId=rowBuffer[bi].struct[col];
+      if(!structId) continue;
+
+      // Init HP on first hit
+      if(!structHP.has(structId)){
+        structHP.set(structId,{hp:maxHP,maxHp:maxHP,color:cellColor});
+      }
+
+      const struct=structHP.get(structId);
+      struct.hp--;
+
+      // Hit spark
+      spawnFX(col*CELL+CELL/2,screenRow*CELL+CELL/2,cellColor,3);
+
+      if(struct.hp<=0){
+        // DESTROY entire structure
+        const{cx,cy,count}=destroyStructure(structId,cellColor);
+        structHP.delete(structId);
+
+        if(count>0){
+          const basePts=(SHOOT_PTS[cellColor]||1);
+          // Flat points per structure (not × cell count)
+          combo++;comboTimer=COMBO_WINDOW;
+          const mult=Math.min(combo,5);
+          const totalPts=basePts*mult;
+          score+=totalPts;
+
+          const txt=mult>1?`+${totalPts} ×${mult}`:`+${basePts}`;
+          popups.push({x:cx,y:cy,text:txt,life:45,
+            color:mult>=4?'#ff8800':mult>=3?'#ffdd00':'#ffff00'});
+
+          // === COLOR-SPECIFIC BENEFITS ===
+          if(cellColor==='magenta'){
+            const healAmt=15+count*2;
+            aura=Math.min(AURA_MAX,aura+healAmt);
+            popups.push({x:cx,y:cy-14,text:'AURA +'+healAmt,life:40,color:'#ff00ff'});
+          }
+          else if(cellColor==='blue'){
+            const xpGain=Math.ceil(count/2);
+            weaponXP+=xpGain;
+            weaponTimer=WEAPON_DURATION;
+            const oldTier=weaponTier;
+            if(weaponXP>=WEAPON_XP_TRIPLE) weaponTier=2;
+            else if(weaponXP>=WEAPON_XP_DUAL) weaponTier=1;
+            if(weaponTier>oldTier){
+              popups.push({x:cx,y:cy-14,text:['','DUAL SHOT','TRIPLE SHOT'][weaponTier],life:50,color:'#0088ff'});
+            }else{
+              const target=weaponTier===0?WEAPON_XP_DUAL:WEAPON_XP_TRIPLE;
+              popups.push({x:cx,y:cy-14,text:`WPN ${weaponXP}/${target}`,life:30,color:'#0066ff'});
+            }
+          }
+          else if(cellColor==='cyan'){
+            score += 2; // small bonus instead
+            popups.push({x:cx,y:cy-14,text:'FLOW BONUS',life:40,color:'#00ffff'});
+          }
+          else if(cellColor==='green'){
+            if(lives<3){lives++;popups.push({x:cx,y:cy-14,text:'+1 LIFE',life:50,color:'#00ff00'});}
+            else{score+=20;popups.push({x:cx,y:cy-14,text:'+20 BONUS',life:40,color:'#00ff00'});}
+          }
+          else if(cellColor==='purple'){
+            aura=AURA_MAX;
+            popups.push({x:cx,y:cy-14,text:'AURA MAX',life:45,color:'#9900ff'});
+          }
+
+          // Aura heal from destroying this color
+          const healAmt=COLOR_HEAL[cellColor]||0;
+          if(healAmt>0 && aura<AURA_MAX){
+            const oldAura=aura;
+            aura=Math.min(AURA_MAX,aura+healAmt);
+            const gained=Math.round(aura-oldAura);
+            if(gained>0){
+              popups.push({x:cx,y:cy-28,text:`AURA +${gained}`,life:35,color:'#00dddd'});
+            }
+          }
+        }
+      }else{
+        popups.push({x:col*CELL+CELL/2,y:screenRow*CELL+CELL/2-6,
+          text:`${struct.hp}`,life:18,color:'#888888'});
+      }
+
+      b.dead=true;
+      break;
+    }
+  }
+  bullets=bullets.filter(b=>!b.dead&&b.life>0);
+
+  // Difficulty ramp
+  perturbTimer++;
+  if(perturbTimer%600===0){
+    baseSpeed=Math.min(2.2,baseSpeed+0.04);
+    scrollSpeed=baseSpeed;
+    perturbChance=Math.min(0.045,perturbChance+0.0015);
+  }
+
+  if(hitFlash>0) hitFlash--;
+  if(iframes>0) iframes--;
+  if(screenShake>0) screenShake--;
+
+  // Weapon timer
+  if(weaponTimer>0){
+    weaponTimer--;
+    if(weaponTimer<=0){
+      if(weaponTier>0){
+        weaponTier--;
+        weaponXP=weaponTier===1?WEAPON_XP_DUAL:0;
+        weaponTimer=weaponTier>0?WEAPON_DURATION:0;
+      }
+    }
+  }
+
+  if(comboTimer>0){comboTimer--;if(comboTimer<=0) combo=0;}
+
+  // Engine trail
+  const shipRowI=Math.floor(shipRow);
+  if(Math.random()<0.7){
+    trails.push({
+      x:ship.x*CELL+CELL*0.5+(Math.random()-0.5)*CELL,
+      y:shipRowI*CELL+CELL*2.5,
+      vy:0.4+Math.random()*0.6,life:10+Math.random()*10,
+      size:2+Math.random()*2,
+    });
+  }
+
+  // =====================================================
+  // SHIP COLLISION — exposure-based aura drain
+  // Damage = sum of per-color damage for all touching cells
+  // Aura = 0 → lose life → refill aura to max
+  // =====================================================
+  const sc=Math.floor(ship.x);
+  let frameDamage=0;
+  let contactCells=0;
+
+  for(let dr=-1;dr<=2;dr++){
+    for(let dc=-1;dc<=1;dc++){
+      const screenR=shipRowI+dr;
+      const c=sc+dc;
+      const bi=rowBuffer.length-1-screenR;
+      if(bi<0||bi>=rowBuffer.length||c<0||c>=COLS) continue;
+      const col=rowBuffer[bi].colors[c];
+
+      if(col==='black'||col==='white'||col==='darkgrey') continue;
+
+      const dmg=COLOR_DAMAGE[col]||0.5;
+      frameDamage+=dmg;
+      contactCells++;
+    }
+  }
+
+  if(contactCells>0 && iframes<=0){
+    aura-=frameDamage;
+
+    // Visual feedback proportional to damage
+    if(frameDamage>1.5) hitFlash=Math.max(hitFlash,8);
+    if(frameDamage>3) screenShake=Math.max(screenShake,4);
+
+    // Damage sparks from aura
+    if(Math.random()<Math.min(0.25,0.04*contactCells)){
+      spawnFX(ship.x*CELL+(Math.random()-0.5)*CELL*3,
+              shipRowI*CELL+(Math.random()-0.5)*CELL*3,'cyan',1);
+    }
+
+    // Aura depleted — lose a life
+    if(aura<=0){
+      lives--;
+      aura=AURA_MAX; // refill to 100%
+      hitFlash=25;iframes=90;screenShake=16;
+      combo=0;comboTimer=0;
+
+      if(weaponTier>0){weaponTier--;weaponXP=weaponTier===1?WEAPON_XP_DUAL:0;}
+      else{weaponXP=0;}
+
+      spawnFX(ship.x*CELL,shipRowI*CELL,'red',20);
+      popups.push({x:ship.x*CELL,y:shipRowI*CELL,text:'AURA BREAK!',life:40,color:'#ff3344'});
+
+      if(lives<=0){endGame();return;}
+    }
+  }
+
+  for(const p of fx){p.x+=p.vx;p.y+=p.vy;p.vy+=0.03;p.life--;}
+  fx=fx.filter(p=>p.life>0);
+  for(const t of trails){t.y+=t.vy;t.life--;}
+  trails=trails.filter(t=>t.life>0);
+  for(const p of popups){p.y-=0.8;p.life--;}
+  popups=popups.filter(p=>p.life>0);
+
+  // Periodic cleanup of stale structHP entries
+  if(generation%300===0){
+    const activeIds=new Set();
+    const start=Math.max(0,rowBuffer.length-ROWS-10);
+    for(let i=start;i<rowBuffer.length;i++){
+      const row=rowBuffer[i];
+      for(let c=0;c<COLS;c++) if(row.struct[c]>0) activeIds.add(row.struct[c]);
+    }
+    for(const[id]of structHP){
+      if(!activeIds.has(id)) structHP.delete(id);
+    }
+  }
+
+  updateUI();
+}
+
+function endGame(){
+  gameActive=false;
+  const finalScore=score;
+  if(finalScore>highScore){highScore=finalScore;try{localStorage.setItem('sp110hs',highScore);}catch(e){}}
+  initGame();
+  score=finalScore;
+  gameActive=false;
+  showOverlay(true);
+}
+
+// =====================================================
+// DRAW
+// =====================================================
+function draw(){
+  let shX=0,shY=0;
+  if(screenShake>0){shX=(Math.random()-0.5)*screenShake*0.5;shY=(Math.random()-0.5)*screenShake*0.5;}
+
+  ctx.save();
+  ctx.translate(shX,shY);
+  ctx.fillStyle='#000';
+  ctx.fillRect(-2,-2,W+4,H+4);
+
+  for(let screenRow=0;screenRow<=ROWS;screenRow++){
+    const bi=rowBuffer.length-1-screenRow;
+    if(bi<0||bi>=rowBuffer.length) continue;
+    const sy=screenRow*CELL+scrollY;
+    if(sy<-CELL||sy>H) continue;
+    const colors=rowBuffer[bi].colors;
+    for(let c=0;c<COLS;c++){
+      const col=colors[c];
+      const hex=displayHex(col);
+      if(hex==='#000000') continue;
+      ctx.fillStyle=hex;
+      ctx.fillRect(c*CELL,sy,CELL,CELL);
+      if(GLOW[col]){
+        ctx.fillStyle=GLOW[col]+'0.08)';
+        ctx.fillRect(c*CELL-1,sy-1,CELL+2,CELL+2);
+      }
+    }
+  }
+
+  ctx.fillStyle='rgba(0,0,0,0.04)';
+  for(let y=0;y<H;y+=2) ctx.fillRect(0,y,W,1);
+
+  if(!gameActive){ctx.restore();return;}
+
+  const shipRowI=Math.floor(shipRow);
+
+  for(const t of trails){
+    const a=Math.max(0,t.life/20);
+    ctx.fillStyle=`rgba(255,${80+Math.random()*150|0},0,${a*0.5})`;
+    ctx.fillRect(t.x-t.size/2,t.y,t.size,t.size);
+  }
+
+  const sx=ship.x*CELL;
+  const sy=shipRowI*CELL;
+
+  // Aura glow — always visible, intensity reflects charge
+  {
+    const auraFrac=Math.max(0,aura/AURA_MAX);
+    if(auraFrac<=0) return;
+
+    const now=Date.now()*0.003;
+    const pulse=0.15+Math.sin(now)*0.05;
+    const w=2 + auraFrac*4;
+
+    const r=auraFrac>0.6?0:auraFrac>0.3?200:255;
+    const g=auraFrac>0.6?220:auraFrac>0.3?180:60;
+    const b=auraFrac>0.6?220:auraFrac>0.3?50:50;
+
+    ctx.lineWidth=w;
+    ctx.strokeStyle=`rgba(${r},${g},${b},${0.25+pulse})`;
+
+    ctx.beginPath();
+
+    // enlarged triangle around ship
+    ctx.moveTo(sx+CELL*0.5, sy-CELL*2.2);
+    ctx.lineTo(sx-CELL*2.4, sy+CELL*3.2);
+    ctx.lineTo(sx+CELL*3.2, sy+CELL*3.2);
+    ctx.closePath();
+
+    ctx.stroke();
+
+    // inner shimmer lines
+    ctx.lineWidth=1;
+    ctx.strokeStyle=`rgba(${r},${g},${b},${0.35+pulse})`;
+
+    ctx.beginPath();
+    ctx.moveTo(sx+CELL*0.5, sy-CELL*1.6);
+    ctx.lineTo(sx-CELL*1.7, sy+CELL*2.4);
+    ctx.lineTo(sx+CELL*2.4, sy+CELL*2.4);
+    ctx.closePath();
+
+    ctx.stroke();
+
+    // low aura instability flicker
+    if(auraFrac<0.25 && Math.floor(Date.now()/120)%2===0){
+      ctx.strokeStyle='rgba(255,60,60,0.4)';
+      ctx.lineWidth=2;
+      ctx.stroke();
+    }
+  }
+
+  if(iframes>0&&Math.floor(iframes/4)%2===0){
+    drawPopups();drawFX();ctx.restore();return;
+  }
+
+  for(const b of bullets){
+    ctx.fillStyle='rgba(255,50,50,0.15)';
+    ctx.fillRect(b.x-2,b.y,4,CELL*2);
+    ctx.fillStyle='#ff2222';
+    ctx.fillRect(b.x-2,b.y-3,4,6);
+    ctx.fillStyle='#ff8888';
+    ctx.fillRect(b.x-1,b.y-4,2,3);
+  }
+
+  ctx.fillStyle='rgba(255,255,255,0.04)';
+  ctx.beginPath();
+  ctx.moveTo(sx+CELL*0.5,sy-CELL*3);
+  ctx.lineTo(sx-CELL*3,sy+CELL*3.5);
+  ctx.lineTo(sx+CELL*4,sy+CELL*3.5);
+  ctx.closePath();ctx.fill();
+
+  ctx.fillStyle=hitFlash>0?'#ff4444':'#ffffff';
+  ctx.beginPath();
+  ctx.moveTo(sx+CELL*0.5,sy-CELL*1.5);
+  ctx.lineTo(sx-CELL*1.5,sy+CELL*2.5);
+  ctx.lineTo(sx+CELL*2.5,sy+CELL*2.5);
+  ctx.closePath();ctx.fill();
+
+  const cockpitColors=['#ffdd00','#0088ff','#00ddff'];
+  ctx.fillStyle=cockpitColors[weaponTier];
+  ctx.fillRect(sx-CELL*0.1,sy+CELL*0.1,CELL*1.2,CELL*0.8);
+
+  if(weaponTier>=1){
+    ctx.fillStyle='#0066ff';
+    ctx.fillRect(sx-CELL*1.2,sy+CELL*1.5,3,3);
+    ctx.fillRect(sx+CELL*1.8,sy+CELL*1.5,3,3);
+  }
+  if(weaponTier>=2){
+    ctx.fillStyle='#00ccff';
+    ctx.fillRect(sx-CELL*0.8,sy+CELL*0.8,2,2);
+    ctx.fillRect(sx+CELL*1.4,sy+CELL*0.8,2,2);
+  }
+
+  const ef=0.4+Math.random()*0.4;
+  ctx.fillStyle=`rgba(255,${80+Math.random()*175|0},0,${ef})`;
+  ctx.fillRect(sx-CELL*0.5,sy+CELL*2.5,CELL*2,CELL*(0.8+Math.random()));
+
+  // === AURA BAR BELOW SHIP ===
+  {
+    const barW=CELL*5;
+    const barH=3;
+    const barX=sx-CELL*1.8;
+    const by=sy+CELL*3.5;
+    const auraFrac=Math.max(0,aura/AURA_MAX);
+    ctx.fillStyle='rgba(0,0,0,0.6)';
+    ctx.fillRect(barX,by,barW,barH);
+    const r=auraFrac>0.6?0:auraFrac>0.3?200:255;
+    const g=auraFrac>0.6?220:auraFrac>0.3?180:50;
+    const b2=auraFrac>0.6?220:auraFrac>0.3?50:50;
+    ctx.fillStyle=`rgb(${r},${g},${b2})`;
+    ctx.fillRect(barX,by,barW*auraFrac,barH);
+    if(auraFrac<0.25&&Math.floor(Date.now()/200)%2===0){
+      ctx.strokeStyle='#ff3344';ctx.lineWidth=1;
+      ctx.strokeRect(barX-0.5,by-0.5,barW+1,barH+1);
+    }
+  }
+
+  if(combo>=2){
+    ctx.globalAlpha=Math.min(1,comboTimer/20);
+    ctx.font='bold 10px JetBrains Mono,monospace';
+    ctx.textAlign='center';
+    ctx.fillStyle=combo>=4?'#ff4400':combo>=3?'#ff8800':'#ffdd00';
+    ctx.fillText(`×${Math.min(combo,5)}`,sx+CELL*0.5,sy-CELL*3);
+    ctx.globalAlpha=1;
+  }
+
+  drawFX();drawPopups();
+
+  if(hitFlash>10){
+    ctx.fillStyle=`rgba(255,20,20,${(hitFlash-10)/40})`;
+    ctx.fillRect(-2,-2,W+4,H+4);
+  }
+
+  const vg=ctx.createRadialGradient(W/2,H/2,H*0.3,W/2,H/2,H*0.85);
+  vg.addColorStop(0,'rgba(0,0,0,0)');
+  vg.addColorStop(1,'rgba(0,0,0,0.3)');
+  ctx.fillStyle=vg;
+  ctx.fillRect(0,0,W,H);
+  ctx.restore();
+}
+
+function drawFX(){
+  for(const p of fx){
+    const a=Math.max(0,p.life/28);
+    ctx.globalAlpha=a;
+    ctx.fillStyle=p.hex;
+    ctx.fillRect(p.x-p.size/2,p.y-p.size/2,p.size,p.size);
+    if(GLOW[p.colorName]){
+      ctx.fillStyle=GLOW[p.colorName]+`${a*0.3})`;
+      ctx.fillRect(p.x-p.size,p.y-p.size,p.size*2,p.size*2);
+    }
+  }
+  ctx.globalAlpha=1;
+}
+
+function drawPopups(){
+  ctx.textAlign='center';
+  for(const p of popups){
+    const a=Math.max(0,p.life/40);
+    ctx.globalAlpha=a;
+    ctx.font=`bold ${p.life>30?11:9}px JetBrains Mono,monospace`;
+    ctx.fillStyle='rgba(0,0,0,0.6)';
+    ctx.fillText(p.text,p.x+1,p.y+1);
+    ctx.fillStyle=p.color;
+    ctx.fillText(p.text,p.x,p.y);
+  }
+  ctx.globalAlpha=1;
+}
+
+// =====================================================
+// UI
+// =====================================================
+function updateUI(){
+  document.getElementById('scoreDisp').textContent=score;
+  let h='';for(let i=0;i<3;i++)h+=i<lives?'♥':'♡';
+  document.getElementById('livesDisp').textContent=h;
+  // Aura bar in HUD
+  const af=document.getElementById('auraFill');
+  const auraPct=Math.max(0,aura/AURA_MAX*100);
+  af.style.width=auraPct+'%';
+  af.style.background=auraPct>60?'#00cccc':auraPct>30?'#ccaa22':'#cc3333';
+  document.getElementById('speedDisp').textContent='×'+baseSpeed.toFixed(1);
+  const cd=document.getElementById('comboDisp');
+  if(combo>=2) cd.innerHTML=`combo <em style="color:${combo>=4?'#ff8800':'#ffdd00'}">×${Math.min(combo,5)}</em>`;
+  else if(weaponTier>0||weaponXP>0){
+    const target=weaponTier>=2?'MAX':weaponTier===1?`${weaponXP}/${WEAPON_XP_TRIPLE}`:`${weaponXP}/${WEAPON_XP_DUAL}`;
+    cd.innerHTML=`wpn <em style="color:#0088ff">${['●','●●','●●●'][weaponTier]} ${target}</em>`;
+  }
+  else cd.textContent='';
+}
+
+function showOverlay(dead){
+  const ol=document.getElementById('overlay');ol.classList.remove('hidden');
+  const t=document.getElementById('olTitle'),s=document.getElementById('olSub');
+  if(dead){
+    t.textContent='GAME OVER';t.style.color='#ff3344';
+    t.style.textShadow='0 0 24px rgba(255,51,68,0.4)';
+    s.innerHTML=`<span class="hl" style="font-size:16px">score: ${score}</span>`;
+    document.getElementById('btn').textContent='↻ PLAY AGAIN';
+  }else{
+    t.textContent='SP 110 RUNNER';t.style.color='#ffdd00';
+    t.style.textShadow='0 0 24px rgba(255,221,0,0.3)';
+    s.textContent='survive the simple programs';
+    document.getElementById('btn').textContent='▶ PLAY';
+  }
+  document.getElementById('hsDisp').textContent=highScore>0?`high score: ${highScore}`:'';
+}
+
+// =====================================================
+// INPUT
+// =====================================================
+const keys={};
+document.addEventListener('keydown',e=>{keys[e.key]=true;
+  if(['ArrowLeft','ArrowRight','ArrowUp','ArrowDown',' ','Shift'].includes(e.key))e.preventDefault();});
+document.addEventListener('keyup',e=>{keys[e.key]=false;});
+
+let tL=false,tR=false;
+document.addEventListener('touchstart',e=>{e.preventDefault();
+  for(const t of e.touches){
+    if(t.clientX<W/2)tL=true;else tR=true;
+  }
+},{passive:false});
+document.addEventListener('touchend',e=>{tL=false;tR=false;
+  for(const t of e.touches){if(t.clientX<W/2)tL=true;else tR=true;}
+});
+document.addEventListener('touchmove',e=>e.preventDefault(),{passive:false});
+
+function handleInput(){
+  if(!gameActive) return;
+  if(keys['ArrowLeft']||keys['a']||tL) shipVx-=ACCEL;
+  if(keys['ArrowRight']||keys['d']||tR) shipVx+=ACCEL;
+  if(keys['ArrowUp']||keys['w']) shipVy-=ACCEL;
+  if(keys['ArrowDown']||keys['s']) shipVy+=ACCEL;
+
+  shipVx=Math.max(-MAX_SPEED,Math.min(MAX_SPEED,shipVx));
+  shipVy=Math.max(-MAX_SPEED,Math.min(MAX_SPEED,shipVy));
+  shipVx*=FRICTION;
+  shipVy*=FRICTION;
+
+  ship.x+=shipVx;
+  shipRow+=shipVy;
+
+  ship.x=Math.max(2,Math.min(COLS-3,ship.x));
+  shipRow=Math.max(ROWS*0.3,Math.min(ROWS-3,shipRow));
+}
+
+// =====================================================
+// START + LOOP
+// =====================================================
+function startGame(){
+  document.getElementById('overlay').classList.add('hidden');
+  initGame();gameActive=true;
+}
+
+document.getElementById('btn').addEventListener('click',startGame);
+
+document.addEventListener('keydown',e=>{
+  if(!gameActive&&!document.getElementById('overlay').classList.contains('hidden')){
+    if(e.key===' '||e.key==='Enter'){
+      e.preventDefault();
+      startGame();
+    }
+  }
+});
+
+function loop(){handleInput();update();draw();requestAnimationFrame(loop);}
+showOverlay(false);
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>
