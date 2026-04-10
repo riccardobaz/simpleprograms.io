@@ -13,6 +13,18 @@
     height:100vh;display:flex;flex-direction:column;
     overflow:hidden;user-select:none;touch-action:none;
   }
+  /* Logo container */
+#logo-container {
+    top: 1.5rem;
+    left: 1.5rem;
+    pointer-events: none;
+    width: 300px;
+    height: 200px;
+    background-image: url('logowhite.svg');
+    background-repeat: no-repeat;
+    position: absolute;
+    cursor: pointer;
+}
   .top-bar{
     display:none;align-items:center;justify-content:space-between;
     padding:6px 16px;border-bottom:1px solid #1a1a22;
@@ -81,6 +93,8 @@
 </head>
 <body onload="startGame()">
 
+
+
 <div class="top-bar">
   <h1><em>SP 110</em> Runner</h1>
   <div class="sub">simple programs endless runner</div>
@@ -88,6 +102,9 @@
 
 
 <div class="arena" id="arenaWrap">
+        <!-- Logo -->
+    <div id="logo-container">
+    </div>
   <div class="hud-bar">
     <div class="hud-left">
       <div>
