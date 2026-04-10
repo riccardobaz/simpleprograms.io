@@ -76,7 +76,7 @@
   .overlay .rule-tag{font-size:8px;color:#2a2a2a;margin-top:16px;letter-spacing:0.1em;text-transform:uppercase}
 </style>
 </head>
-<body>
+<body onload="startGame()">
 
 <div class="top-bar">
   <h1><em>SP 110</em> Runner</h1>
@@ -967,9 +967,13 @@ function handleInput(){
 // START + LOOP
 // =====================================================
 function startGame(){
+  console.log('aaaa');
+  
   document.getElementById('overlay').classList.add('hidden');
   initGame();gameActive=true;
 }
+
+
 
 document.getElementById('btn').addEventListener('click',startGame);
 
