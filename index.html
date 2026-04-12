@@ -1050,8 +1050,15 @@ document.addEventListener('keydown',e=>{keys[e.key]=true;
   if(['ArrowLeft','ArrowRight','ArrowUp','ArrowDown',' ','Shift'].includes(e.key))e.preventDefault();});
 document.addEventListener('keyup',e=>{keys[e.key]=false;});
 
+function isMobileJoystickActive(){
+  return window.matchMedia('(max-width: 599px)').matches && 'ontouchstart' in window;
+}
+
 const JOY_DEADZONE=18;
 function getJoystickAxis(){
+  if(!isMobileJoystickActive()){
+    return {x:0,y:0};
+  }
   const x=parseFloat(joy.GetX())||0;
   const y=parseFloat(joy.GetY())||0;
   return {
