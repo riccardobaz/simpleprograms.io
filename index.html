@@ -86,31 +86,27 @@
   .top-bar h1 em{color:#ffdd00;font-style:normal}
   .top-bar .sub{font-size:10px;color:#444;letter-spacing:0.04em}
   .hud-bar{
-    display:flex;align-items:center;justify-content:space-between;
-    padding:5px 16px;border-bottom:1px solid #1a1a22;
-    flex-shrink:0;background:#0a0a0f;z-index:20;
+    display:flex;flex-direction:column;align-items:flex-end;gap:4px;
+    padding:10px 14px;z-index:20;
     position: absolute;
-    bottom: 0;
-    right: 0;
+    right: 12px;
+    bottom: 12px;
   }
-  .hud-left,.hud-right{display:flex;align-items:center;gap:10px}
-  .hud-center{display:flex;align-items:center;gap:12px}
+  .hud-score{
+    display:flex;flex-direction:column;align-items:flex-end;
+    background:rgba(10,10,15,0.8);border:1px solid #1a1a22;
+    padding:8px 10px;
+  }
   .score-display{
-    font-size:18px;font-weight:700;color:#ffdd00;
-    text-shadow:0 0 12px rgba(255,221,0,0.25);min-width:60px;
+    font-size:24px;font-weight:700;color:#ffdd00;
+    text-shadow:0 0 12px rgba(255,221,0,0.25);min-width:72px;
+    text-align:right;line-height:1;
   }
-  .score-label{font-size:8px;color:#555;letter-spacing:0.08em;text-transform:uppercase}
-  .lives-display{font-size:18px;color:#ff3344;letter-spacing:2px}
-  .shield-group{display:flex;align-items:center;gap:6px}
-  .shield-label{font-size:8px;color:#444;letter-spacing:0.06em;text-transform:uppercase}
-  .shield-track{width:60px;height:6px;background:#111;border:1px solid #1a1a22;border-radius:1px;overflow:hidden}
-  .shield-fill{height:100%;background:#00aaaa;transition:width 0.1s;border-radius:1px}
-  .hp-group{display:flex;align-items:center;gap:6px}
-  .hp-label{font-size:8px;color:#444;letter-spacing:0.06em;text-transform:uppercase}
-  .hp-track{width:80px;height:6px;background:#111;border:1px solid #1a1a22;border-radius:1px;overflow:hidden}
-  .hp-fill{height:100%;background:#44cc44;transition:width 0.05s;border-radius:1px}
-  .stat{font-size:9px;color:#333}
-  .stat em{color:#555;font-style:normal}
+  .score-label{font-size:8px;color:#777;letter-spacing:0.12em;text-transform:uppercase;margin-bottom:3px}
+  .lives-display{
+    font-size:24px;color:#ff3344;letter-spacing:3px;line-height:1;
+    text-shadow:0 0 10px rgba(255,51,68,0.22);
+  }
   .arena{flex:1;display:flex;align-items:center;justify-content:center;position:relative;background:#000}
   canvas{image-rendering:pixelated;display:block}
   .controls-hint{
@@ -202,22 +198,10 @@ The lab builds on years of research in theoretical physics, statistical mechanic
 Whether one sees science or design depends on where one looks: both are expressions of the same inquiry.
     </div>
   <div class="hud-bar">
-    <div class="hud-left">
-      <div>
-        <div class="score-label">score</div>
-        <div class="score-display" id="scoreDisp">0</div>
-      </div>
-    </div>
-    <div class="hud-center">
-      <div class="hp-group">
-        <div class="hp-label">aura</div>
-        <div class="hp-track"><div class="hp-fill" id="auraFill"></div></div>
-      </div>
-      <div class="stat">speed <em id="speedDisp">×1.0</em></div>
-      <div class="stat" id="comboDisp" style="color:#333"></div>
-    </div>
-    <div class="hud-right">
-      <div class="lives-display" id="livesDisp">♥♥♥</div>
+    <div class="lives-display" id="livesDisp">♥♥♥</div>
+    <div class="hud-score">
+      <div class="score-label">score</div>
+      <div class="score-display" id="scoreDisp">0</div>
     </div>
   </div>
   <canvas id="c"></canvas>
@@ -1018,19 +1002,6 @@ function updateUI(){
   document.getElementById('scoreDisp').textContent=score;
   let h='';for(let i=0;i<3;i++)h+=i<lives?'♥':'♡';
   document.getElementById('livesDisp').textContent=h;
-  // Aura bar in HUD
-  const af=document.getElementById('auraFill');
-  const auraPct=Math.max(0,aura/AURA_MAX*100);
-  af.style.width=auraPct+'%';
-  af.style.background=auraPct>60?'#00cccc':auraPct>30?'#ccaa22':'#cc3333';
-  document.getElementById('speedDisp').textContent='×'+baseSpeed.toFixed(1);
-  const cd=document.getElementById('comboDisp');
-  if(combo>=2) cd.innerHTML=`combo <em style="color:${combo>=4?'#ff8800':'#ffdd00'}">×${Math.min(combo,5)}</em>`;
-  else if(weaponTier>0||weaponXP>0){
-    const target=weaponTier>=2?'MAX':weaponTier===1?`${weaponXP}/${WEAPON_XP_TRIPLE}`:`${weaponXP}/${WEAPON_XP_DUAL}`;
-    cd.innerHTML=`wpn <em style="color:#0088ff">${['●','●●','●●●'][weaponTier]} ${target}</em>`;
-  }
-  else cd.textContent='';
 }
 
 function showOverlay(dead){
