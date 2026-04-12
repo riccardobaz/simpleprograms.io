@@ -228,7 +228,7 @@ Whether one sees science or design depends on where one looks: both are expressi
     <p><span class="rd">red</span>=1hit <span class="hl">yellow</span>=2 <span class="bl">blue</span>=3→wpn <span class="mg">magenta</span>=4→shield <span style="color:#00ff00">green</span>=6→life</p>
     <p>contact drains aura · <span class="rd">red/green</span> = high damage · <span class="bl">blue/cyan</span> = low</p>
     <p>destroy <span style="color:#00ff00">green</span> / <span style="color:#9900ff">purple</span> to restore aura</p>
-    <p class="dim" style="margin-top:6px">← → ↑ ↓ or WASD to move · drag anywhere on mobile</p>
+    <p class="dim" style="margin-top:6px">← → ↑ ↓ or WASD to move · swipe on mobile</p>
     <p class="dim">space / enter to start</p>
     <button id="btn">▶ PLAY</button>
     <div class="hs" id="hsDisp"></div>
@@ -237,7 +237,7 @@ Whether one sees science or design depends on where one looks: both are expressi
 </div>
 
 <div class="controls-hint">
-  ← → ↑ ↓ move &nbsp;·&nbsp; auto-fire destroys structures &nbsp;·&nbsp; mobile: drag anywhere to move
+  ← → ↑ ↓ move &nbsp;·&nbsp; auto-fire destroys structures &nbsp;·&nbsp; mobile: swipe to steer
 </div>
 
 <script>
@@ -1054,6 +1054,7 @@ document.addEventListener('keydown',e=>{keys[e.key]=true;
   if(['ArrowLeft','ArrowRight','ArrowUp','ArrowDown',' ','Shift'].includes(e.key))e.preventDefault();});
 document.addEventListener('keyup',e=>{keys[e.key]=false;});
 
+/*
 const DRAG_DEADZONE=10;
 const DRAG_FULL_PULL=60;
 let dragTouchId=null;
@@ -1122,18 +1123,67 @@ document.addEventListener('touchend',e=>{
 document.addEventListener('touchcancel',e=>{
   resetTouchDrag(e.changedTouches);
 },{passive:true});
+*/
+
+const SWIPE_THRESHOLD=28;
+const SWIPE_IMPULSE=0.65;
+let swipeTouchId=null;
+let swipeStartX=0,swipeStartY=0;
+
+function isSwipeActive(){
+  return window.matchMedia('(max-width: 599px)').matches && 'ontouchstart' in window;
+}
+
+function shouldIgnoreMobileGesture(target){
+  return !!target.closest('#menu, #btn');
+}
+
+function getTouchById(touchList,id){
+  for(const touch of touchList){
+    if(touch.identifier===id) return touch;
+  }
+  return null;
+}
+
+function applySwipe(dx,dy){
+  if(Math.abs(dx)<SWIPE_THRESHOLD && Math.abs(dy)<SWIPE_THRESHOLD) return;
+  if(Math.abs(dx)>=Math.abs(dy)){
+    shipVx+=Math.sign(dx)*SWIPE_IMPULSE;
+  }else{
+    shipVy+=Math.sign(dy)*SWIPE_IMPULSE;
+  }
+}
+
+document.addEventListener('touchstart',e=>{
+  if(!isSwipeActive()||swipeTouchId!==null) return;
+  const touch=e.changedTouches[0];
+  if(!touch||shouldIgnoreMobileGesture(e.target)) return;
+  swipeTouchId=touch.identifier;
+  swipeStartX=touch.clientX;
+  swipeStartY=touch.clientY;
+},{passive:true});
+
+document.addEventListener('touchend',e=>{
+  if(swipeTouchId===null) return;
+  const touch=getTouchById(e.changedTouches,swipeTouchId);
+  if(!touch) return;
+  applySwipe(touch.clientX-swipeStartX,touch.clientY-swipeStartY);
+  swipeTouchId=null;
+},{passive:true});
+
+document.addEventListener('touchcancel',e=>{
+  if(swipeTouchId===null) return;
+  if(!getTouchById(e.changedTouches,swipeTouchId)) return;
+  swipeTouchId=null;
+},{passive:true});
 
 function handleInput(){
   if(!gameActive) return;
-  const touchAxis=getTouchDragAxis();
 
   if(keys['ArrowLeft']||keys['a']) shipVx-=ACCEL;
   if(keys['ArrowRight']||keys['d']) shipVx+=ACCEL;
   if(keys['ArrowUp']||keys['w']) shipVy-=ACCEL;
   if(keys['ArrowDown']||keys['s']) shipVy+=ACCEL;
-
-  shipVx+=touchAxis.x*ACCEL;
-  shipVy+=touchAxis.y*ACCEL;
 
   shipVx=Math.max(-MAX_SPEED,Math.min(MAX_SPEED,shipVx));
   shipVy=Math.max(-MAX_SPEED,Math.min(MAX_SPEED,shipVy));
