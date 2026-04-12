@@ -221,7 +221,7 @@ const ctx=canvas.getContext("2d");
 
 // Fixed grid width (multiple of 14 for ETHER tiling).
 // Mobile keeps chunkier pixels; desktop uses a denser grid.
-const COLS=window.matchMedia('(min-width: 900px)').matches ? 252 : 126;
+const COLS=window.matchMedia('(min-width: 900px)').matches ? 224 : 112;
 let CELL;
 
 let W,H;
@@ -319,7 +319,7 @@ let ROWS;
 let caState,caColors;
 let rowBuffer=[];
 let scrollY=0;
-let scrollSpeed=0.8,baseSpeed=0.8;
+let scrollSpeed=0.9,baseSpeed=0.9;
 let generation=0;
 let perturbChance=0,perturbTimer=0;
 
@@ -408,7 +408,7 @@ function initGame(){
 
   for(let r=0;r<ROWS+STARTUP_HISTORY_ROWS;r++) advanceCA();
 
-  scrollY=0;scrollSpeed=0.8;baseSpeed=0.8;
+  scrollY=0;scrollSpeed=0.9;baseSpeed=0.9;
   generation=0;
   perturbChance=0.1;perturbTimer=0;
   ship.x=Math.floor(COLS/2);
