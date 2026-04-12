@@ -90,7 +90,7 @@
     padding:10px 14px;z-index:20;
     position: absolute;
     right: 12px;
-    bottom: 12px;
+    bottom: 36px;
   }
   .hud-score{
     display:flex;flex-direction:column;align-items:flex-end;
@@ -1151,7 +1151,7 @@ function handleInput(){
   shipRow+=shipVy;
 
   ship.x=Math.max(2,Math.min(COLS-3,ship.x));
-  shipRow=Math.max(ROWS*0.3,Math.min(ROWS-3,shipRow));
+  shipRow=Math.max(ROWS*0.3,Math.min(ROWS-6,shipRow));
 }
 
 // =====================================================
