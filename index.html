@@ -345,7 +345,7 @@ const WEAPON_XP_TRIPLE=7;
 const WEAPON_DURATION=600;
 const SHOOT_RATE=14;
 const BULLET_SPEED=1;
-const STARTUP_HISTORY_ROWS=90; // was 60
+const STARTUP_HISTORY_ROWS=180; // increase to start from a later-looking state; set back to 60 to restore original feel
 
 let shipVx=0,shipVy=0;
 const ACCEL=0.1,FRICTION=0.85,MAX_SPEED=1.8;
@@ -406,11 +406,14 @@ function initGame(){
   nextStructId=1;
   structHP.clear();
 
+  generation=0;
+  perturbChance=0.1;
+  perturbTimer=0;
   for(let r=0;r<ROWS+STARTUP_HISTORY_ROWS;r++) advanceCA();
 
   scrollY=0;scrollSpeed=0.8;baseSpeed=0.8;
   generation=0;
-  perturbChance=0.1;perturbTimer=0;
+  perturbTimer=0;
   ship.x=Math.floor(COLS/2);
   shipVx=0;shipVy=0;
   score=0;lives=3;
