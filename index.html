@@ -17,6 +17,8 @@
     font-family:'JetBrains Mono',monospace;
     height:100vh;display:flex;flex-direction:column;
     overflow:hidden;user-select:none;touch-action:none;
+    -webkit-user-select:none;
+    -webkit-touch-callout:none;
   }
   /* Logo container */
 #logo-container {
@@ -106,7 +108,7 @@
     text-shadow:0 0 10px rgba(255,51,68,0.22);
   }
   .arena{flex:1;display:flex;align-items:center;justify-content:center;position:relative;background:#000}
-  canvas{image-rendering:pixelated;display:block}
+  canvas{image-rendering:pixelated;display:block;-webkit-user-select:none;user-select:none}
   .overlay{
     position:absolute;inset:0;
     display:flex;flex-direction:column;align-items:center;justify-content:center;
@@ -1100,18 +1102,20 @@ document.addEventListener('touchstart',e=>{
   if(!isTouchDragActive()||dragTouchId!==null) return;
   const touch=e.changedTouches[0];
   if(!touch||shouldIgnoreTouchDrag(e.target)) return;
+  e.preventDefault();
   dragTouchId=touch.identifier;
   dragStartX=dragCurrentX=touch.clientX;
   dragStartY=dragCurrentY=touch.clientY;
-},{passive:true});
+},{passive:false});
 
 document.addEventListener('touchmove',e=>{
   if(dragTouchId===null) return;
   const touch=getTouchById(e.changedTouches,dragTouchId);
   if(!touch) return;
+  e.preventDefault();
   dragCurrentX=touch.clientX;
   dragCurrentY=touch.clientY;
-},{passive:true});
+},{passive:false});
 
 function resetTouchDrag(touchList){
   if(dragTouchId===null) return;
@@ -1123,12 +1127,14 @@ function resetTouchDrag(touchList){
 }
 
 document.addEventListener('touchend',e=>{
+  if(getTouchById(e.changedTouches,dragTouchId)) e.preventDefault();
   resetTouchDrag(e.changedTouches);
-},{passive:true});
+},{passive:false});
 
 document.addEventListener('touchcancel',e=>{
+  if(getTouchById(e.changedTouches,dragTouchId)) e.preventDefault();
   resetTouchDrag(e.changedTouches);
-},{passive:true});
+},{passive:false});
 
 function handleInput(){
   if(!gameActive) return;
