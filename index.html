@@ -224,7 +224,7 @@ Whether one sees science or design depends on where one looks: both are expressi
     <p><span class="rd">red</span>=1hit <span class="hl">yellow</span>=2 <span class="bl">blue</span>=3→wpn <span class="mg">magenta</span>=4→shield <span style="color:#00ff00">green</span>=6→life</p>
     <p>contact drains aura · <span class="rd">red/green</span> = high damage · <span class="bl">blue/cyan</span> = low</p>
     <p>destroy <span style="color:#00ff00">green</span> / <span style="color:#9900ff">purple</span> to restore aura</p>
-    <p class="dim" style="margin-top:6px">← → ↑ ↓ or WASD to move · touch sides on mobile</p>
+    <p class="dim" style="margin-top:6px">← → ↑ ↓ or WASD to move · joystick on mobile</p>
     <p class="dim">space / enter to start</p>
     <button id="btn">▶ PLAY</button>
     <div class="hs" id="hsDisp"></div>
@@ -233,7 +233,7 @@ Whether one sees science or design depends on where one looks: both are expressi
 </div>
 
 <div class="controls-hint">
-  ← → ↑ ↓ move &nbsp;·&nbsp; auto-fire destroys structures &nbsp;·&nbsp; touch: left/right halves to move
+  ← → ↑ ↓ move &nbsp;·&nbsp; auto-fire destroys structures &nbsp;·&nbsp; mobile: joystick to move
 </div>
 
 <script>
@@ -1050,23 +1050,27 @@ document.addEventListener('keydown',e=>{keys[e.key]=true;
   if(['ArrowLeft','ArrowRight','ArrowUp','ArrowDown',' ','Shift'].includes(e.key))e.preventDefault();});
 document.addEventListener('keyup',e=>{keys[e.key]=false;});
 
-let tL=false,tR=false;
-document.addEventListener('touchstart',e=>{e.preventDefault();
-  for(const t of e.touches){
-    if(t.clientX<W/2)tL=true;else tR=true;
-  }
-},{passive:false});
-document.addEventListener('touchend',e=>{tL=false;tR=false;
-  for(const t of e.touches){if(t.clientX<W/2)tL=true;else tR=true;}
-});
-document.addEventListener('touchmove',e=>e.preventDefault(),{passive:false});
+const JOY_DEADZONE=18;
+function getJoystickAxis(){
+  const x=parseFloat(joy.GetX())||0;
+  const y=parseFloat(joy.GetY())||0;
+  return {
+    x: Math.abs(x)>=JOY_DEADZONE ? x/100 : 0,
+    y: Math.abs(y)>=JOY_DEADZONE ? y/100 : 0,
+  };
+}
 
 function handleInput(){
   if(!gameActive) return;
-  if(keys['ArrowLeft']||keys['a']||tL) shipVx-=ACCEL;
-  if(keys['ArrowRight']||keys['d']||tR) shipVx+=ACCEL;
+  const joyAxis=getJoystickAxis();
+
+  if(keys['ArrowLeft']||keys['a']) shipVx-=ACCEL;
+  if(keys['ArrowRight']||keys['d']) shipVx+=ACCEL;
   if(keys['ArrowUp']||keys['w']) shipVy-=ACCEL;
   if(keys['ArrowDown']||keys['s']) shipVy+=ACCEL;
+
+  shipVx+=joyAxis.x*ACCEL;
+  shipVy-=joyAxis.y*ACCEL;
 
   shipVx=Math.max(-MAX_SPEED,Math.min(MAX_SPEED,shipVx));
   shipVy=Math.max(-MAX_SPEED,Math.min(MAX_SPEED,shipVy));
@@ -1090,7 +1094,6 @@ function startGame(){
 
 
 document.addEventListener('click', e => {
-  console.log(e.clientX < 200 && e.clientY < 120)
   if(e.clientX < 200 && e.clientY < 120) {
     document.getElementById('menu').classList.add('show');
   }
