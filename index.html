@@ -326,6 +326,7 @@ let shipRow;
 let score=0,lives=3;
 let gameActive=false;
 let restartOnModalClose=false;
+let runStartFrame=0;
 let hitFlash=0,iframes=0;
 let highScore=0;
 try{highScore=parseInt(localStorage.getItem('sp110hs')||'0');}catch(e){}
@@ -345,6 +346,9 @@ const BULLET_SPEED=1;
 
 let shipVx=0,shipVy=0;
 const ACCEL=0.1,FRICTION=0.85,MAX_SPEED=1.8;
+const INTRO_HINT_FRAMES=130;
+const INTRO_RESIST_FRAMES=150;
+const INTRO_FADE_FRAMES=24;
 
 // =====================================================
 // AURA SYSTEM — unified shield/HP as always-on energy field
@@ -407,6 +411,7 @@ function initGame(){
   ship.x=Math.floor(COLS/2);
   shipVx=0;shipVy=0;
   score=0;lives=3;
+  runStartFrame=0;
   aura=AURA_MAX;
   hitFlash=0;iframes=0;fx=[];trails=[];screenShake=0;
   bullets=[];shootTimer=0;
@@ -952,6 +957,44 @@ function draw(){
   vg.addColorStop(1,'rgba(0,0,0,0.3)');
   ctx.fillStyle=vg;
   ctx.fillRect(0,0,W,H);
+
+  drawIntroMessage();
+  ctx.restore();
+}
+
+function drawIntroMessage(){
+  if(!gameActive) return;
+
+  runStartFrame++;
+  const totalFrames=INTRO_HINT_FRAMES+INTRO_RESIST_FRAMES;
+  if(runStartFrame>totalFrames) return;
+
+  let text='';
+  let alpha=1;
+  if(runStartFrame<=INTRO_HINT_FRAMES){
+    text='swipe to move';
+    if(runStartFrame<INTRO_FADE_FRAMES) alpha=runStartFrame/INTRO_FADE_FRAMES;
+    else if(runStartFrame>INTRO_HINT_FRAMES-INTRO_FADE_FRAMES) alpha=(INTRO_HINT_FRAMES-runStartFrame)/INTRO_FADE_FRAMES;
+  }else{
+    const resistFrame=runStartFrame-INTRO_HINT_FRAMES;
+    text='resist the simple programs!';
+    if(resistFrame<INTRO_FADE_FRAMES) alpha=resistFrame/INTRO_FADE_FRAMES;
+    else if(resistFrame>INTRO_RESIST_FRAMES-INTRO_FADE_FRAMES) alpha=(INTRO_RESIST_FRAMES-resistFrame)/INTRO_FADE_FRAMES;
+  }
+
+  alpha=Math.max(0,Math.min(1,alpha));
+  if(alpha<=0) return;
+
+  const fontSize=Math.max(16,Math.round(Math.min(W,H)*0.028));
+  ctx.save();
+  ctx.globalAlpha=alpha;
+  ctx.textAlign='center';
+  ctx.textBaseline='middle';
+  ctx.font=`500 ${fontSize}px JetBrains Mono,monospace`;
+  ctx.fillStyle='rgba(0,0,0,0.6)';
+  ctx.fillText(text,W/2+1,H*0.2+1);
+  ctx.fillStyle='#d7d7dc';
+  ctx.fillText(text,W/2,H*0.2);
   ctx.restore();
 }
 
