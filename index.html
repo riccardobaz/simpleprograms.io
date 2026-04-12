@@ -345,6 +345,7 @@ const WEAPON_XP_TRIPLE=7;
 const WEAPON_DURATION=600;
 const SHOOT_RATE=14;
 const BULLET_SPEED=1;
+const STARTUP_HISTORY_ROWS=90; // was 60
 
 let shipVx=0,shipVy=0;
 const ACCEL=0.1,FRICTION=0.85,MAX_SPEED=1.8;
@@ -405,7 +406,7 @@ function initGame(){
   nextStructId=1;
   structHP.clear();
 
-  for(let r=0;r<ROWS+60;r++) advanceCA();
+  for(let r=0;r<ROWS+STARTUP_HISTORY_ROWS;r++) advanceCA();
 
   scrollY=0;scrollSpeed=0.8;baseSpeed=0.8;
   generation=0;
