@@ -352,6 +352,7 @@ let ship={x:0};
 let shipRow;
 let score=0,lives=3;
 let gameActive=false;
+let restartOnModalClose=false;
 let hitFlash=0,iframes=0;
 let highScore=0;
 try{highScore=parseInt(localStorage.getItem('sp110hs')||'0');}catch(e){}
@@ -788,10 +789,8 @@ function endGame(){
   gameActive=false;
   const finalScore=score;
   if(finalScore>highScore){highScore=finalScore;try{localStorage.setItem('sp110hs',highScore);}catch(e){}}
-  initGame();
-  score=finalScore;
-  gameActive=false;
-  showOverlay(true);
+  restartOnModalClose=true;
+  document.getElementById('menu').classList.add('show');
 }
 
 // =====================================================
@@ -1201,6 +1200,8 @@ function handleInput(){
 // START + LOOP
 // =====================================================
 function startGame(){
+  restartOnModalClose=false;
+  document.getElementById('menu').classList.remove('show');
   document.getElementById('overlay').classList.add('hidden');
   initGame();gameActive=true;
 }
@@ -1220,6 +1221,9 @@ document.addEventListener('touchstart', e => {
 
 function closeModal() {
       document.getElementById('menu').classList.remove('show');
+      if(restartOnModalClose){
+        startGame();
+      }
 }
 
 document.getElementById('btn').addEventListener('click',startGame);
