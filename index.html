@@ -350,7 +350,6 @@ const STARTUP_HISTORY_ROWS=60;
 let shipVx=0,shipVy=0;
 const ACCEL=0.1,FRICTION=0.85,MAX_SPEED=1.8;
 const INTRO_HINT_FRAMES=130;
-const INTRO_RESIST_FRAMES=150;
 const INTRO_FADE_FRAMES=24;
 
 // =====================================================
@@ -970,21 +969,12 @@ function drawIntroMessage(){
   if(!gameActive) return;
 
   runStartFrame++;
-  const totalFrames=INTRO_HINT_FRAMES+INTRO_RESIST_FRAMES;
-  if(runStartFrame>totalFrames) return;
+  if(runStartFrame>INTRO_HINT_FRAMES) return;
 
-  let text='';
+  const text='swipe to move';
   let alpha=1;
-  if(runStartFrame<=INTRO_HINT_FRAMES){
-    text='swipe to move';
-    if(runStartFrame<INTRO_FADE_FRAMES) alpha=runStartFrame/INTRO_FADE_FRAMES;
-    else if(runStartFrame>INTRO_HINT_FRAMES-INTRO_FADE_FRAMES) alpha=(INTRO_HINT_FRAMES-runStartFrame)/INTRO_FADE_FRAMES;
-  }else{
-    const resistFrame=runStartFrame-INTRO_HINT_FRAMES;
-    text='resist the simple programs!';
-    if(resistFrame<INTRO_FADE_FRAMES) alpha=resistFrame/INTRO_FADE_FRAMES;
-    else if(resistFrame>INTRO_RESIST_FRAMES-INTRO_FADE_FRAMES) alpha=(INTRO_RESIST_FRAMES-resistFrame)/INTRO_FADE_FRAMES;
-  }
+  if(runStartFrame<INTRO_FADE_FRAMES) alpha=runStartFrame/INTRO_FADE_FRAMES;
+  else if(runStartFrame>INTRO_HINT_FRAMES-INTRO_FADE_FRAMES) alpha=(INTRO_HINT_FRAMES-runStartFrame)/INTRO_FADE_FRAMES;
 
   alpha=Math.max(0,Math.min(1,alpha));
   if(alpha<=0) return;
