@@ -773,8 +773,9 @@ function endGame(){
   screenShake=0;
   hitFlash=0;
   dragTouchId=null;
-  dragStartX=dragCurrentX=0;
-  dragStartY=dragCurrentY=0;
+  dragAnchorX=dragAnchorY=0;
+  dragTargetX=ship.x;
+  dragTargetY=shipRow;
   restartOnModalClose=true;
   document.getElementById('menu').classList.add('show');
 }
@@ -1064,11 +1065,9 @@ document.addEventListener('keydown',e=>{keys[e.key]=true;
   if(['ArrowLeft','ArrowRight','ArrowUp','ArrowDown',' ','Shift'].includes(e.key))e.preventDefault();});
 document.addEventListener('keyup',e=>{keys[e.key]=false;});
 
-const DRAG_DEADZONE=10;
-const DRAG_FULL_PULL=60;
 let dragTouchId=null;
-let dragStartX=0,dragStartY=0;
-let dragCurrentX=0,dragCurrentY=0;
+let dragAnchorX=0,dragAnchorY=0;
+let dragTargetX=0,dragTargetY=0;
 
 function isTouchDragActive(){
   return window.matchMedia('(max-width: 599px)').matches && 'ontouchstart' in window;
@@ -1085,6 +1084,10 @@ function getTouchById(touchList,id){
   return null;
 }
 
+/*
+Previous mobile drag version, kept here for quick rollback:
+const DRAG_DEADZONE=10;
+const DRAG_FULL_PULL=60;
 function getTouchDragAxis(){
   if(!isTouchDragActive()||dragTouchId===null){
     return {x:0,y:0};
@@ -1098,6 +1101,12 @@ function getTouchDragAxis(){
     y: Math.abs(dy)>=DRAG_DEADZONE ? normY : 0,
   };
 }
+*/
+
+function updateTouchDragTarget(clientX,clientY){
+  dragTargetX=clientX/CELL-dragAnchorX;
+  dragTargetY=clientY/CELL-dragAnchorY;
+}
 
 document.addEventListener('touchstart',e=>{
   if(!isTouchDragActive()||dragTouchId!==null) return;
@@ -1105,8 +1114,9 @@ document.addEventListener('touchstart',e=>{
   if(!touch||shouldIgnoreTouchDrag(e.target)) return;
   e.preventDefault();
   dragTouchId=touch.identifier;
-  dragStartX=dragCurrentX=touch.clientX;
-  dragStartY=dragCurrentY=touch.clientY;
+  dragAnchorX=touch.clientX/CELL-ship.x;
+  dragAnchorY=touch.clientY/CELL-shipRow;
+  updateTouchDragTarget(touch.clientX,touch.clientY);
 },{passive:false});
 
 document.addEventListener('touchmove',e=>{
@@ -1114,8 +1124,7 @@ document.addEventListener('touchmove',e=>{
   const touch=getTouchById(e.changedTouches,dragTouchId);
   if(!touch) return;
   e.preventDefault();
-  dragCurrentX=touch.clientX;
-  dragCurrentY=touch.clientY;
+  updateTouchDragTarget(touch.clientX,touch.clientY);
 },{passive:false});
 
 function resetTouchDrag(touchList){
@@ -1123,8 +1132,9 @@ function resetTouchDrag(touchList){
   const touch=getTouchById(touchList,dragTouchId);
   if(!touch) return;
   dragTouchId=null;
-  dragStartX=dragCurrentX=0;
-  dragStartY=dragCurrentY=0;
+  dragAnchorX=dragAnchorY=0;
+  dragTargetX=ship.x;
+  dragTargetY=shipRow;
 }
 
 document.addEventListener('touchend',e=>{
@@ -1139,15 +1149,12 @@ document.addEventListener('touchcancel',e=>{
 
 function handleInput(){
   if(!gameActive) return;
-  const touchAxis=getTouchDragAxis();
+  const usingDirectDrag=isTouchDragActive()&&dragTouchId!==null;
 
   if(keys['ArrowLeft']||keys['a']) shipVx-=ACCEL;
   if(keys['ArrowRight']||keys['d']) shipVx+=ACCEL;
   if(keys['ArrowUp']||keys['w']) shipVy-=ACCEL;
   if(keys['ArrowDown']||keys['s']) shipVy+=ACCEL;
-
-  shipVx+=touchAxis.x*ACCEL;
-  shipVy+=touchAxis.y*ACCEL;
 
   shipVx=Math.max(-MAX_SPEED,Math.min(MAX_SPEED,shipVx));
   shipVy=Math.max(-MAX_SPEED,Math.min(MAX_SPEED,shipVy));
@@ -1156,6 +1163,13 @@ function handleInput(){
 
   ship.x+=shipVx;
   shipRow+=shipVy;
+
+  if(usingDirectDrag){
+    ship.x+= (dragTargetX-ship.x)*0.35;
+    shipRow+= (dragTargetY-shipRow)*0.35;
+    shipVx*=0.5;
+    shipVy*=0.5;
+  }
 
   ship.x=Math.max(2,Math.min(COLS-3,ship.x));
   shipRow=Math.max(ROWS*0.3,Math.min(ROWS-20,shipRow));
