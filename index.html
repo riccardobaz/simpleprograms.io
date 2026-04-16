@@ -224,6 +224,31 @@ setInterval(function(){
 const canvas=document.getElementById("c");
 const ctx=canvas.getContext("2d");
 
+function loadSprite(src){
+  const img=new Image();
+  img.src=encodeURI(src);
+  return img;
+}
+
+const SHIP_SPRITES={
+  baseFull: loadSprite('Foozle_2DS0011_Void_MainShip/Main Ship/Main Ship - Bases/PNGs/Main Ship - Base - Full health.png'),
+  baseSlight: loadSprite('Foozle_2DS0011_Void_MainShip/Main Ship/Main Ship - Bases/PNGs/Main Ship - Base - Slight damage.png'),
+  baseDamaged: loadSprite('Foozle_2DS0011_Void_MainShip/Main Ship/Main Ship - Bases/PNGs/Main Ship - Base - Damaged.png'),
+  baseVeryDamaged: loadSprite('Foozle_2DS0011_Void_MainShip/Main Ship/Main Ship - Bases/PNGs/Main Ship - Base - Very damaged.png'),
+  enginePowering: loadSprite('Foozle_2DS0011_Void_MainShip/Main Ship/Main Ship - Engine Effects/PNGs/Main Ship - Engines - Base Engine - Powering.png'),
+  shield: loadSprite('Foozle_2DS0011_Void_MainShip/Main Ship/Main Ship - Shields/PNGs/Main Ship - Shields - Front and Side Shield.png'),
+  weapon: loadSprite('Foozle_2DS0011_Void_MainShip/Main Ship/Main Ship - Weapons/PNGs/Main Ship - Weapons - Auto Cannon.png'),
+  bullet: loadSprite('Foozle_2DS0011_Void_MainShip/Main ship weapons/PNGs/Main ship weapon - Projectile - Auto cannon bullet.png'),
+};
+
+function drawSpriteFrame(img,frameWidth,frameHeight,frameIndex,dx,dy,dw,dh){
+  if(!img.complete||!img.naturalWidth) return false;
+  const frames=Math.max(1,Math.floor(img.naturalWidth/frameWidth));
+  const safeFrame=((frameIndex%frames)+frames)%frames;
+  ctx.drawImage(img,safeFrame*frameWidth,0,frameWidth,frameHeight,dx,dy,dw,dh);
+  return true;
+}
+
 // Fixed grid width (multiple of 14 for ETHER tiling).
 // Mobile keeps chunkier pixels; desktop uses a denser grid.
 const COLS=window.matchMedia('(min-width: 900px)').matches ? 224 : 112;
@@ -881,48 +906,8 @@ function draw(){
     drawPopups();drawFX();ctx.restore();return;
   }
 
-  const bs=CELL/6; // bullet scale factor
-  for(const b of bullets){
-    ctx.fillStyle='rgba(255,50,50,0.15)';
-    ctx.fillRect(b.x-2*bs,b.y,4*bs,CELL*2);
-    ctx.fillStyle='#ff2222';
-    ctx.fillRect(b.x-2*bs,b.y-3*bs,4*bs,6*bs);
-    ctx.fillStyle='#ff8888';
-    ctx.fillRect(b.x-1*bs,b.y-4*bs,2*bs,3*bs);
-  }
-
-  ctx.fillStyle='rgba(255,255,255,0.04)';
-  ctx.beginPath();
-  ctx.moveTo(sx+CELL*0.5,sy-CELL*3);
-  ctx.lineTo(sx-CELL*3,sy+CELL*3.5);
-  ctx.lineTo(sx+CELL*4,sy+CELL*3.5);
-  ctx.closePath();ctx.fill();
-
-  ctx.fillStyle=hitFlash>0?'#ff4444':'#ffffff';
-  ctx.beginPath();
-  ctx.moveTo(sx+CELL*0.5,sy-CELL*1.5);
-  ctx.lineTo(sx-CELL*1.5,sy+CELL*2.5);
-  ctx.lineTo(sx+CELL*2.5,sy+CELL*2.5);
-  ctx.closePath();ctx.fill();
-
-  const cockpitColors=['#ffdd00','#0088ff','#00ddff'];
-  ctx.fillStyle=cockpitColors[weaponTier];
-  ctx.fillRect(sx-CELL*0.1,sy+CELL*0.1,CELL*1.2,CELL*0.8);
-
-  if(weaponTier>=1){
-    ctx.fillStyle='#0066ff';
-    ctx.fillRect(sx-CELL*1.2,sy+CELL*1.5,CELL*0.5,CELL*0.5);
-    ctx.fillRect(sx+CELL*1.8,sy+CELL*1.5,CELL*0.5,CELL*0.5);
-  }
-  if(weaponTier>=2){
-    ctx.fillStyle='#00ccff';
-    ctx.fillRect(sx-CELL*0.8,sy+CELL*0.8,CELL*0.33,CELL*0.33);
-    ctx.fillRect(sx+CELL*1.4,sy+CELL*0.8,CELL*0.33,CELL*0.33);
-  }
-
-  const ef=0.4+Math.random()*0.4;
-  ctx.fillStyle=`rgba(255,${80+Math.random()*175|0},0,${ef})`;
-  ctx.fillRect(sx-CELL*0.5,sy+CELL*2.5,CELL*2,CELL*(0.8+Math.random()));
+  drawSpriteBullets();
+  drawSpriteShip(sx,sy,Math.max(0,aura/AURA_MAX));
 
   // === AURA BAR BELOW SHIP ===
   {
@@ -1024,6 +1009,103 @@ function drawPopups(){
     ctx.fillText(p.text,p.x,p.y);
   }
   ctx.globalAlpha=1;
+}
+
+function drawFallbackBullets(bs){
+  for(const b of bullets){
+    ctx.fillStyle='rgba(255,50,50,0.15)';
+    ctx.fillRect(b.x-2*bs,b.y,4*bs,CELL*2);
+    ctx.fillStyle='#ff2222';
+    ctx.fillRect(b.x-2*bs,b.y-3*bs,4*bs,6*bs);
+    ctx.fillStyle='#ff8888';
+    ctx.fillRect(b.x-1*bs,b.y-4*bs,2*bs,3*bs);
+  }
+}
+
+function drawFallbackShip(sx,sy){
+  ctx.fillStyle='rgba(255,255,255,0.04)';
+  ctx.beginPath();
+  ctx.moveTo(sx+CELL*0.5,sy-CELL*3);
+  ctx.lineTo(sx-CELL*3,sy+CELL*3.5);
+  ctx.lineTo(sx+CELL*4,sy+CELL*3.5);
+  ctx.closePath();ctx.fill();
+
+  ctx.fillStyle=hitFlash>0?'#ff4444':'#ffffff';
+  ctx.beginPath();
+  ctx.moveTo(sx+CELL*0.5,sy-CELL*1.5);
+  ctx.lineTo(sx-CELL*1.5,sy+CELL*2.5);
+  ctx.lineTo(sx+CELL*2.5,sy+CELL*2.5);
+  ctx.closePath();ctx.fill();
+
+  const cockpitColors=['#ffdd00','#0088ff','#00ddff'];
+  ctx.fillStyle=cockpitColors[weaponTier];
+  ctx.fillRect(sx-CELL*0.1,sy+CELL*0.1,CELL*1.2,CELL*0.8);
+
+  if(weaponTier>=1){
+    ctx.fillStyle='#0066ff';
+    ctx.fillRect(sx-CELL*1.2,sy+CELL*1.5,CELL*0.5,CELL*0.5);
+    ctx.fillRect(sx+CELL*1.8,sy+CELL*1.5,CELL*0.5,CELL*0.5);
+  }
+  if(weaponTier>=2){
+    ctx.fillStyle='#00ccff';
+    ctx.fillRect(sx-CELL*0.8,sy+CELL*0.8,CELL*0.33,CELL*0.33);
+    ctx.fillRect(sx+CELL*1.4,sy+CELL*0.8,CELL*0.33,CELL*0.33);
+  }
+
+  const ef=0.4+Math.random()*0.4;
+  ctx.fillStyle=`rgba(255,${80+Math.random()*175|0},0,${ef})`;
+  ctx.fillRect(sx-CELL*0.5,sy+CELL*2.5,CELL*2,CELL*(0.8+Math.random()));
+}
+
+function getShipBaseSprite(auraFrac){
+  if(auraFrac>0.75) return SHIP_SPRITES.baseFull;
+  if(auraFrac>0.5) return SHIP_SPRITES.baseSlight;
+  if(auraFrac>0.25) return SHIP_SPRITES.baseDamaged;
+  return SHIP_SPRITES.baseVeryDamaged;
+}
+
+function drawSpriteBullets(){
+  const spriteSize=CELL*2.2;
+  for(const b of bullets){
+    const frame=Math.floor((122-b.life)/4);
+    if(!drawSpriteFrame(SHIP_SPRITES.bullet,32,32,frame,b.x-spriteSize/2,b.y-spriteSize*0.6,spriteSize,spriteSize)){
+      drawFallbackBullets(CELL/6);
+      return;
+    }
+  }
+}
+
+function drawSpriteShip(sx,sy,auraFrac){
+  const shipSize=CELL*6;
+  const shipX=sx-shipSize/2;
+  const shipY=sy-CELL*2;
+  const engineFrame=Math.floor(Date.now()/80);
+  const weaponFrame=Math.floor(shootTimer/2);
+  const shieldFrame=Math.min(5,Math.max(0,5-Math.floor(auraFrac*5)));
+
+  let drewAnything=false;
+
+  drewAnything=drawSpriteFrame(SHIP_SPRITES.enginePowering,48,48,engineFrame,shipX,shipY,shipSize,shipSize)||drewAnything;
+  drewAnything=drawSpriteFrame(SHIP_SPRITES.weapon,48,48,weaponFrame,shipX,shipY,shipSize,shipSize)||drewAnything;
+  drewAnything=drawSpriteFrame(getShipBaseSprite(auraFrac),48,48,0,shipX,shipY,shipSize,shipSize)||drewAnything;
+
+  if(auraFrac>0.1){
+    ctx.save();
+    ctx.globalAlpha=0.2+Math.min(0.45,auraFrac*0.35);
+    drewAnything=drawSpriteFrame(SHIP_SPRITES.shield,64,64,shieldFrame,shipX-CELL,shipY-CELL*0.4,shipSize+CELL*2,shipSize+CELL*1.5)||drewAnything;
+    ctx.restore();
+  }
+
+  if(hitFlash>0&&drewAnything){
+    ctx.save();
+    ctx.globalCompositeOperation='source-atop';
+    ctx.globalAlpha=Math.min(0.55,hitFlash/25);
+    ctx.fillStyle='#ff4444';
+    ctx.fillRect(shipX,shipY,shipSize,shipSize);
+    ctx.restore();
+  }
+
+  if(!drewAnything) drawFallbackShip(sx,sy);
 }
 
 // =====================================================
