@@ -856,52 +856,6 @@ function draw(){
   const sx=ship.x*CELL;
   const sy=shipRowI*CELL;
 
-  // Aura glow — always visible, intensity reflects charge
-  {
-    const auraFrac=Math.max(0,aura/AURA_MAX);
-    if(auraFrac<=0) return;
-
-    const now=Date.now()*0.003;
-    const pulse=0.15+Math.sin(now)*0.05;
-    const w=(2 + auraFrac*4)*(CELL/6);
-
-    const r=auraFrac>0.6?0:auraFrac>0.3?200:255;
-    const g=auraFrac>0.6?220:auraFrac>0.3?180:60;
-    const b=auraFrac>0.6?220:auraFrac>0.3?50:50;
-
-    ctx.lineWidth=w;
-    ctx.strokeStyle=`rgba(${r},${g},${b},${0.25+pulse})`;
-
-    ctx.beginPath();
-
-    // enlarged triangle around ship
-    ctx.moveTo(sx+CELL*0.5, sy-CELL*2.2);
-    ctx.lineTo(sx-CELL*2.4, sy+CELL*3.2);
-    ctx.lineTo(sx+CELL*3.2, sy+CELL*3.2);
-    ctx.closePath();
-
-    ctx.stroke();
-
-    // inner shimmer lines
-    ctx.lineWidth=1*(CELL/6);
-    ctx.strokeStyle=`rgba(${r},${g},${b},${0.35+pulse})`;
-
-    ctx.beginPath();
-    ctx.moveTo(sx+CELL*0.5, sy-CELL*1.6);
-    ctx.lineTo(sx-CELL*1.7, sy+CELL*2.4);
-    ctx.lineTo(sx+CELL*2.4, sy+CELL*2.4);
-    ctx.closePath();
-
-    ctx.stroke();
-
-    // low aura instability flicker
-    if(auraFrac<0.25 && Math.floor(Date.now()/120)%2===0){
-      ctx.strokeStyle='rgba(255,60,60,0.4)';
-      ctx.lineWidth=2*(CELL/6);
-      ctx.stroke();
-    }
-  }
-
   if(iframes>0&&Math.floor(iframes/4)%2===0){
     drawPopups();drawFX();ctx.restore();return;
   }
