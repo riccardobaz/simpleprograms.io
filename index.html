@@ -236,7 +236,7 @@ const SHIP_SPRITES={
   baseDamaged: loadSprite('Foozle_2DS0011_Void_MainShip/Main Ship/Main Ship - Bases/PNGs/Main Ship - Base - Damaged.png'),
   baseVeryDamaged: loadSprite('Foozle_2DS0011_Void_MainShip/Main Ship/Main Ship - Bases/PNGs/Main Ship - Base - Very damaged.png'),
   enginePowering: loadSprite('Foozle_2DS0011_Void_MainShip/Main Ship/Main Ship - Engine Effects/PNGs/Main Ship - Engines - Base Engine - Powering.png'),
-  shield: loadSprite('Foozle_2DS0011_Void_MainShip/Main Ship/Main Ship - Shields/PNGs/Main Ship - Shields - Front and Side Shield.png'),
+  shield: loadSprite('Foozle_2DS0011_Void_MainShip/Main Ship/Main Ship - Shields/PNGs/Main Ship - Shields - Invincibility Shield.png'),
   weapon: loadSprite('Foozle_2DS0011_Void_MainShip/Main Ship/Main Ship - Weapons/PNGs/Main Ship - Weapons - Auto Cannon.png'),
   bullet: loadSprite('Foozle_2DS0011_Void_MainShip/Main ship weapons/PNGs/Main ship weapon - Projectile - Auto cannon bullet.png'),
 };
@@ -1030,9 +1030,9 @@ function drawSpriteBullets(){
 }
 
 function drawSpriteShip(sx,sy,auraFrac){
-  const shipSize=CELL*6;
+  const shipSize=CELL*7.2;
   const shipX=sx-shipSize/2;
-  const shipY=sy-CELL*2;
+  const shipY=sy-CELL*2.4;
   const engineFrame=Math.floor(Date.now()/80);
   const weaponFrame=Math.floor(shootTimer/2);
   const shieldFrame=Math.min(5,Math.max(0,5-Math.floor(auraFrac*5)));
@@ -1046,7 +1046,7 @@ function drawSpriteShip(sx,sy,auraFrac){
   if(auraFrac>0.1){
     ctx.save();
     ctx.globalAlpha=0.2+Math.min(0.45,auraFrac*0.35);
-    drewAnything=drawSpriteFrame(SHIP_SPRITES.shield,64,64,shieldFrame,shipX-CELL,shipY-CELL*0.4,shipSize+CELL*2,shipSize+CELL*1.5)||drewAnything;
+    drewAnything=drawSpriteFrame(SHIP_SPRITES.shield,64,64,shieldFrame,shipX-CELL*1.1,shipY-CELL*0.5,shipSize+CELL*2.2,shipSize+CELL*1.8)||drewAnything;
     ctx.restore();
   }
 
