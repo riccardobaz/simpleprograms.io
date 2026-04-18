@@ -268,6 +268,10 @@ window.addEventListener("resize",resize);
 // COLOR PATTERNS
 // =====================================================
 const COLOR_PATTERNS=[
+  {length:15,color:'orange',    hex:'#ff8800'},
+  {length:14,color:'lime',      hex:'#b6ff00'},
+  {length:13,color:'violet',    hex:'#cc66ff'},
+  {length:12,color:'sky',       hex:'#66ccff'},
   {length:11,color:'lightgray',hex:'#D3D3D3'},
   {length:10,color:'darkgreen',hex:'#023d33'},
   {length:9, color:'green',    hex:'#00FF00'},
@@ -290,6 +294,8 @@ const GLOW={
   yellow:'rgba(255,255,0,',red:'rgba(255,0,0,',magenta:'rgba(255,0,255,',
   cyan:'rgba(0,255,255,',green:'rgba(0,255,0,',blue:'rgba(0,102,255,',
   purple:'rgba(153,0,255,',silver:'rgba(255,255,255,',white:'rgba(255,255,255,',
+  orange:'rgba(255,136,0,',lime:'rgba(182,255,0,',violet:'rgba(204,102,255,',
+  sky:'rgba(102,204,255,',
 };
 
 // =====================================================
@@ -334,10 +340,12 @@ const ETHER=[0,0,0,1,0,0,1,1,0,1,1,1,1,1];
 // TUNABLE: HITS TO DESTROY & POINTS
 // =====================================================
 const HITS_TO_DESTROY={
+  orange:10, lime:9, violet:8, sky:6,
   red:1, silver:2, yellow:20, blue:4, cyan:12,
   magenta:8, lightgray:4, purple:5, green:6, darkgreen:7,
 };
 const SHOOT_PTS={
+  orange:14, lime:12, violet:10, sky:9,
   red:1, silver:1, yellow:2, blue:3, cyan:3,
   magenta:5, purple:6, lightgray:8, green:8, darkgreen:12,
 };
@@ -398,6 +406,10 @@ const COLOR_HEAL={
 
 // Per-color damage per frame per touching cell (tunable!)
 const COLOR_DAMAGE={
+  orange:   1.1,    // heavy large pattern
+  lime:     0.9,    // bright but manageable
+  violet:   0.75,   // mid-high pressure
+  sky:      0.45,   // low-medium sustained
   red:      1.8,    // spike — high damage
   silver:   0.3,    // very low — common small structure
   yellow:   0.8,    // steady medium
